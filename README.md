@@ -2,99 +2,109 @@
 
 > **macOS-style keyboard layout switcher & status bar indicator for [Omarchy Linux](https://omarchy.org/) (Hyprland).**
 
-[English](#features) | [Русский](#возможности)
-
 ---
 
-## Возможности
+## Overview
 
-- **Переключение как в macOS (MRU — Most Recently Used):**
-  - **Одиночное нажатие (`Ctrl+Space`):** всегда переключает между **двумя последними** используемыми языками (например, `EN` ⇄ `RU`), сколько бы времени ни прошло между нажатиями.
-  - **Быстрое повторное нажатие / удержание (в течение 1 секунды):** запускает циклическое переключение по **всем остальным языкам** системы (`EN` → `RU` → `GR` → `EN`...). Как только вы остановились на нужном языке и начали печатать, он фиксируется в паре с предыдущим.
-- **Индикатор в статус-баре (возле часов):**
-  - Компактный виджет бара Omarchy (`EN`, `RU`, `EL` и т.д.), размещаемый рядом с часами.
-  - При клике на виджет срабатывает переключение языка в стиле macOS.
-  - Всплывающая подсказка с полным названием активной раскладки.
-- **Всплывающее OSD-уведомление:**
-  - При каждом переключении или прокрутке языков на экране появляется нативное OSD-окно Omarchy с названием языка.
-- **Полная динамичность (Zero hardcoding):**
-  - Не привязан к конкретным языкам. Плагин автоматически считывает любые раскладки, настроенные в вашем `~/.config/hypr/input.lua` (2, 3, 4 и более языков).
-  - Затрагивает **только логику переключения**, не перезаписывая ваши настройки раскладок и вариантов.
+In standard Linux/Hyprland setups, keyboard layout switching with multiple languages cycles sequentially through every single layout in a fixed circular order (e.g., US → Russian → Greek → US).
+
+This plugin brings the intuitive **macOS input switching behavior** to Omarchy:
+- **Quick tap (`Ctrl + Space`):** Always toggles between the **last two used layouts** (e.g., English ⇄ Russian), no matter how much time has passed between typing sessions.
+- **Rapid press / hold (within 1 second):** Cycles through **all remaining system layouts** (e.g., English → Russian → Greek → English...). Once you stop on a layout and begin typing, it is pinned as active and pairs with the previous layout.
 
 ---
 
 ## Features
 
-- **macOS-style MRU (Most Recently Used) switching:**
-  - **Single tap (`Ctrl+Space`):** always toggles between the **last two** active layouts (e.g. `EN` ⇄ `RU`), no matter how much time passed.
-  - **Rapid press / hold (within 1 second):** cycles through **all remaining layouts** (`EN` → `RU` → `GR` → `EN`...). When you stop and resume typing, the selected layout becomes active and pairs with the previous one.
-- **Bar indicator next to the clock:**
-  - Clean Omarchy status bar widget displaying the current language code (`EN`, `RU`, `EL`, etc.).
-  - Clicking the widget toggles layouts macOS-style.
-  - Tooltip with the full layout name.
+- **macOS-style MRU (Most Recently Used) Switching:**
+  - Single tap toggles the active pair.
+  - Repeated presses within a 1-second window cycle through the full list of layouts.
+- **Status Bar Indicator (Next to Clock):**
+  - Compact Quickshell bar widget displaying the current language code (`EN`, `RU`, `EL`, etc.).
+  - Placed directly adjacent to the clock in the center section of the Omarchy bar.
+  - Left-clicking the widget triggers the macOS-style layout switch.
+  - Tooltip shows the full layout description.
 - **On-Screen Display (OSD):**
-  - Native Omarchy OSD popup showing the active language name whenever you switch.
-- **Completely dynamic (Zero hardcoding):**
-  - Automatically queries Hyprland for whatever layouts are configured in your system. Works with any combination of 2, 3, 4+ languages.
+  - Native Omarchy OSD popup displaying the active language name whenever the layout changes.
+- **Fully Dynamic (Zero Hardcoding):**
+  - Automatically queries Hyprland for whatever layouts are configured in your system.
+  - Works with any number of languages (2, 3, 4, or more).
+  - Only manages switching logic — never alters or overwrites your keyboard layout options or variants.
 
 ---
 
-## Установка / Installation
+## Installation
 
-### Способ 1: Через менеджер плагинов Omarchy (рекомендуется)
+### Method 1: Using Omarchy Plugin Manager (Recommended)
 
-```bash
-omarchy plugin add https://github.com/smyrnode/macos-keyboard-toggle --enable
-```
+1. Add the plugin via the Omarchy CLI:
+   ```bash
+   omarchy plugin add https://github.com/smyrnode/macos-keyboard-toggle --enable
+   ```
 
-Затем запустите установщик для настройки бинарника и горячей клавиши:
-```bash
-~/.config/omarchy/plugins/macos-keyboard-toggle/install.sh
-```
+2. Run the installer script to register the binary and configure keybindings:
+   ```bash
+   ~/.config/omarchy/plugins/macos-keyboard-toggle/install.sh
+   ```
 
-### Способ 2: Вручную через Git
+### Method 2: Manual Clone
 
-```bash
-git clone https://github.com/smyrnode/macos-keyboard-toggle.git ~/.config/omarchy/plugins/macos-keyboard-toggle
-cd ~/.config/omarchy/plugins/macos-keyboard-toggle
-./install.sh
-```
+1. Clone the repository into your Omarchy plugins directory:
+   ```bash
+   git clone https://github.com/smyrnode/macos-keyboard-toggle.git ~/.config/omarchy/plugins/macos-keyboard-toggle
+   ```
+
+2. Run the installer script:
+   ```bash
+   cd ~/.config/omarchy/plugins/macos-keyboard-toggle
+   ./install.sh
+   ```
 
 ---
 
-## Настройка горячей клавиши / Keybinding
+## Keybinding Configuration
 
-Установщик автоматически добавляет привязку в `~/.config/hypr/bindings.lua`:
+The installer automatically adds the following shortcut to `~/.config/hypr/bindings.lua`:
 
 ```lua
 -- macOS-style language toggle: quick tap toggles last 2, hold/repeat cycles all
 o.bind("CTRL + SPACE", "Toggle language (macOS-style)", "~/.local/bin/omarchy-lang-toggle")
 ```
 
-> **Важно:** Убедитесь, что в вашем `~/.config/hypr/input.lua` отключён переключатель XKB `grp:..._toggle`, чтобы он не конфликтовал со скриптом:
+> **Important:** Ensure that any XKB group toggle option (such as `grp:ctrl_space_toggle` or `grp:alt_shift_toggle`) is removed from `kb_options` in `~/.config/hypr/input.lua` to prevent conflicts:
 > ```lua
 > kb_options = "compose:caps,shift:both_capslock_cancel",
 > ```
 
 ---
 
-## Структура плагина / Architecture
+## Architecture
 
 ```
 macos-keyboard-toggle/
-├── manifest.json              # Манифест плагина Omarchy shell (schemaVersion 1)
-├── BarWidget.qml              # Виджет статус-бара Quickshell
-├── KeyboardLayoutModel.js     # Форматирование и сопоставление кодов языков (xkbcli)
+├── manifest.json              # Omarchy shell plugin manifest (schemaVersion 1)
+├── BarWidget.qml              # Quickshell status bar widget
+├── KeyboardLayoutModel.js     # Language code formatting and xkbcli brief mapping
 ├── bin/
-│   └── omarchy-lang-toggle    # Динамический Python-скрипт переключения и OSD
-├── install.sh                 # Скрипт быстрой установки
-├── uninstall.sh               # Скрипт удаления
-├── README.md
+│   └── omarchy-lang-toggle    # Dynamic Python switcher script with OSD support
+├── install.sh                 # One-step installation script
+├── uninstall.sh               # Complete uninstallation script
+├── README.md                  # Documentation
 └── LICENSE                    # MIT License
 ```
 
 ---
 
-## Лицензия / License
+## Uninstallation
 
-MIT License © 2026 Dmitry Smyrnov
+To remove the plugin and restore the default keyboard layout widget:
+
+```bash
+~/.config/omarchy/plugins/macos-keyboard-toggle/uninstall.sh
+```
+
+---
+
+## License
+
+[MIT License](LICENSE) © 2026 Dmitry Smyrnov
