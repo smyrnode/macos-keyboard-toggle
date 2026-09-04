@@ -8,11 +8,11 @@ BINDINGS_FILE="${HOME}/.config/hypr/bindings.lua"
 
 echo "==> Installing macOS Keyboard Toggle for Omarchy..."
 
-# 1. Install toggle binary
+# 1. Install toggle binary (symlink so updates in plugin apply immediately)
 mkdir -p "$BIN_DIR"
-cp -f "${PLUGIN_DIR}/bin/omarchy-lang-toggle" "${BIN_DIR}/omarchy-lang-toggle"
-chmod +x "${BIN_DIR}/omarchy-lang-toggle"
-echo "  [x] Installed omarchy-lang-toggle to ${BIN_DIR}/omarchy-lang-toggle"
+ln -sf "${PLUGIN_DIR}/bin/omarchy-lang-toggle" "${BIN_DIR}/omarchy-lang-toggle"
+chmod +x "${PLUGIN_DIR}/bin/omarchy-lang-toggle"
+echo "  [x] Linked omarchy-lang-toggle to ${BIN_DIR}/omarchy-lang-toggle"
 
 # 2. Configure Hyprland keybinding in bindings.lua if not already present
 if [[ -f "$BINDINGS_FILE" ]]; then
