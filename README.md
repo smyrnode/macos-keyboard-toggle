@@ -35,30 +35,27 @@ This plugin brings the intuitive **macOS input switching behavior** to Omarchy:
 
 ## Installation
 
-### Method 1: Using Omarchy Plugin Manager (Recommended)
+### Method 1: Via Omarchy Shell (Recommended)
 
-1. Add the plugin via the Omarchy CLI:
-   ```bash
-   omarchy plugin add https://github.com/smyrnode/macos-keyboard-toggle --enable
-   ```
+Install and enable the plugin in one command (or via Omarchy Menu → Plugins):
 
-2. Run the installer script to register the binary and configure keybindings:
-   ```bash
-   ~/.config/omarchy/plugins/macos-keyboard-toggle/install.sh
-   ```
+```bash
+omarchy plugin add https://github.com/smyrnode/macos-keyboard-toggle --enable
+```
 
-### Method 2: Manual Clone
+**That's it!** Once enabled, the status bar widget mounts automatically, links the binary to `~/.local/bin/omarchy-lang-toggle`, and registers the `Ctrl + Space` keybinding in Hyprland.
 
-1. Clone the repository into your Omarchy plugins directory:
-   ```bash
-   git clone https://github.com/smyrnode/macos-keyboard-toggle.git ~/.config/omarchy/plugins/macos-keyboard-toggle
-   ```
+---
 
-2. Run the installer script:
-   ```bash
-   cd ~/.config/omarchy/plugins/macos-keyboard-toggle
-   ./install.sh
-   ```
+### Method 2: Manual Installation via Git
+
+If you prefer to install manually:
+
+```bash
+git clone https://github.com/smyrnode/macos-keyboard-toggle.git ~/.config/omarchy/plugins/macos-keyboard-toggle
+cd ~/.config/omarchy/plugins/macos-keyboard-toggle
+./install.sh
+```
 
 ---
 
