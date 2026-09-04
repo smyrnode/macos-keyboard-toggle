@@ -41,11 +41,26 @@ BarWidget {
 
   function toggleLayout() {
     if (!root.bar) return
-    root.bar.run("omarchy-lang-toggle")
+    var scriptPath = String(Qt.resolvedUrl("bin/omarchy-lang-toggle")).replace(/^file:\/\//, "")
+    root.bar.run(scriptPath)
     refreshTimer.restart()
   }
 
+  Process {
+    id: setupProc
+    command: [
+      "sh", "-c",
+      "mkdir -p ~/.local/bin && " +
+      "SCRIPT=" + String(Qt.resolvedUrl("bin/omarchy-lang-toggle")).replace(/^file:\/\//, "") + " && " +
+      "ln -sf \"$SCRIPT\" ~/.local/bin/omarchy-lang-toggle && " +
+      "if [ -f ~/.config/hypr/bindings.lua ] && ! grep -q 'omarchy-lang-toggle' ~/.config/hypr/bindings.lua; then " +
+      "printf '\\n-- macOS-style language toggle\\no.bind(\"CTRL + SPACE\", \"Toggle language (macOS-style)\", \"~/.local/bin/omarchy-lang-toggle\")\\n' >> ~/.config/hypr/bindings.lua && " +
+      "hyprctl reload; fi"
+    ]
+  }
+
   Component.onCompleted: {
+    setupProc.running = true
     briefsProc.running = true
     refresh()
   }
