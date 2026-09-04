@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "macos-keyboard-toggle",
+  "name": "macOS Keyboard Toggle",
+  "version": "1.0.0",
+  "author": "Dmitry Smyrnov",
+  "description": "macOS-style input language switcher (MRU toggle & hold/rapid cycle) with status bar indicator and OSD for Omarchy",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Keyboard (macOS)",
+    "description": "Language indicator next to clock with macOS-style switching",
+    "category": "Input",
+    "allowMultiple": false,
+    "defaultSection": "center"
+  }
+}
