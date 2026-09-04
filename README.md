@@ -44,7 +44,7 @@
 ### Способ 1: Через менеджер плагинов Omarchy (рекомендуется)
 
 ```bash
-omarchy plugin add https://github.com/<USERNAME>/macos-keyboard-toggle --enable
+omarchy plugin add https://github.com/smyrnode/macos-keyboard-toggle --enable
 ```
 
 Затем запустите установщик для настройки бинарника и горячей клавиши:
@@ -55,7 +55,7 @@ omarchy plugin add https://github.com/<USERNAME>/macos-keyboard-toggle --enable
 ### Способ 2: Вручную через Git
 
 ```bash
-git clone https://github.com/<USERNAME>/macos-keyboard-toggle.git ~/.config/omarchy/plugins/macos-keyboard-toggle
+git clone https://github.com/smyrnode/macos-keyboard-toggle.git ~/.config/omarchy/plugins/macos-keyboard-toggle
 cd ~/.config/omarchy/plugins/macos-keyboard-toggle
 ./install.sh
 ```
