@@ -24,8 +24,10 @@ This plugin brings the intuitive **macOS input switching behavior** to Omarchy:
   - Placed directly adjacent to the clock in the center section of the Omarchy bar.
   - Left-clicking the widget triggers the macOS-style layout switch.
   - Tooltip shows the full layout description.
-- **On-Screen Display (OSD):**
-  - Native Omarchy OSD popup is shown **only when cycling** through additional languages (3+), keeping ordinary two-language toggling fast, clean, and distraction-free (like macOS).
+- **macOS-style Switcher HUD with Animated Cursor:**
+  - When cycling through 3+ languages (rapid presses / hold), a centered floating card HUD appears displaying square tiles for all configured languages.
+  - A highlighted selection cursor smoothly slides between the language tiles as you cycle (`US` → `RU` → `GR`...).
+  - Fast single-tap toggling between the last two layouts remains completely silent without showing any popup.
 - **Fully Dynamic (Zero Hardcoding):**
   - Automatically queries Hyprland for whatever layouts are configured in your system.
   - Works with any number of languages (2, 3, 4, or more).
@@ -81,9 +83,10 @@ o.bind("CTRL + SPACE", "Toggle language (macOS-style)", "~/.local/bin/omarchy-la
 macos-keyboard-toggle/
 ├── manifest.json              # Omarchy shell plugin manifest (schemaVersion 1)
 ├── BarWidget.qml              # Quickshell status bar widget
+├── SwitcherHud.qml            # Centered macOS switcher HUD with animated cursor
 ├── KeyboardLayoutModel.js     # Language code formatting and xkbcli brief mapping
 ├── bin/
-│   └── omarchy-lang-toggle    # Dynamic Python switcher script with OSD support
+│   └── omarchy-lang-toggle    # Dynamic Python switcher script with IPC support
 ├── install.sh                 # One-step installation script
 ├── uninstall.sh               # Complete uninstallation script
 ├── README.md                  # Documentation

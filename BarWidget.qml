@@ -79,6 +79,23 @@ BarWidget {
     }
   }
 
+  Loader {
+    id: hudLoader
+    source: Qt.resolvedUrl("SwitcherHud.qml")
+  }
+
+  IpcHandler {
+    target: "macos-keyboard-toggle"
+    function ping(): string { return "pong" }
+    function showHud(payloadJson: string): string {
+      if (hudLoader.item) {
+        hudLoader.item.show(payloadJson)
+        return "ok"
+      }
+      return "not-ready"
+    }
+  }
+
   Process {
     id: queryProc
     command: ["hyprctl", "-j", "devices"]
