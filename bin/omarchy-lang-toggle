@@ -144,13 +144,16 @@ def main():
         mru = [current_idx, mru[0]]
 
     elapsed = now_ms - last_ts
+    is_cycling = False
 
     if elapsed > CYCLE_TIMEOUT_MS:
         # NORMAL TAP: Swap current and previous (MRU toggle)
         origin = mru[0]
         mru = [mru[1], mru[0]]
+        is_cycling = False
     else:
         # CYCLING: Rapid press within timeout -> cycle through remaining layouts
+        is_cycling = True
         next_layout = (mru[0] + 1) % num_layouts
         last_current = mru[0]
         if next_layout != origin:
@@ -180,12 +183,11 @@ def main():
     # Switch all keyboards
     apply_layout_to_all(devices, target)
 
-    # Query updated keymap name for OSD
-    updated_devices = get_hyprland_devices()
-    _, updated_keymap = get_active_keyboard_info(updated_devices, num_layouts)
-
-    # Show OSD
-    show_osd(updated_keymap or configured_layouts[target].upper())
+    # Show OSD only when cycling through layouts (3+ layouts), never on normal toggle
+    if num_layouts > 2 and is_cycling:
+        updated_devices = get_hyprland_devices()
+        _, updated_keymap = get_active_keyboard_info(updated_devices, num_layouts)
+        show_osd(updated_keymap or configured_layouts[target].upper())
 
 
 if __name__ == "__main__":

@@ -25,7 +25,7 @@ This plugin brings the intuitive **macOS input switching behavior** to Omarchy:
   - Left-clicking the widget triggers the macOS-style layout switch.
   - Tooltip shows the full layout description.
 - **On-Screen Display (OSD):**
-  - Native Omarchy OSD popup displaying the active language name whenever the layout changes.
+  - Native Omarchy OSD popup is shown **only when cycling** through additional languages (3+), keeping ordinary two-language toggling fast, clean, and distraction-free (like macOS).
 - **Fully Dynamic (Zero Hardcoding):**
   - Automatically queries Hyprland for whatever layouts are configured in your system.
   - Works with any number of languages (2, 3, 4, or more).
