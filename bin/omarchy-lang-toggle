@@ -138,7 +138,7 @@ def show_switcher_hud(target_idx, configured_layouts, updated_keymap):
 
     try:
         subprocess.Popen(
-            ["omarchy-shell", "-q", "macos-keyboard-toggle", "showHud", payload],
+            ["omarchy-shell", "-q", "smyrnode.macos-keyboard-toggle", "showHud", payload],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )

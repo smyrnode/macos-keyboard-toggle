@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installer for macos-keyboard-toggle plugin
+# Installer for smyrnode.macos-keyboard-toggle plugin
 set -euo pipefail
 
 PLUGIN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -31,7 +31,7 @@ echo "  [x] Enabling bar widget next to clock..."
 if omarchy plugin list | grep -q "omarchy.keyboard-layout.*enabled"; then
   omarchy plugin disable omarchy.keyboard-layout >/dev/null 2>&1 || true
 fi
-omarchy plugin enable macos-keyboard-toggle --section center --after omarchy.clock >/dev/null 2>&1 || true
+omarchy plugin enable smyrnode.macos-keyboard-toggle --section center --after omarchy.clock >/dev/null 2>&1 || true
 
 # 4. Reload Hyprland & Omarchy shell
 echo "  [x] Reloading Hyprland configuration..."

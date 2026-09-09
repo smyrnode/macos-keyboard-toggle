@@ -16,7 +16,7 @@ PanelWindow {
   visible: opened
   anchors { top: true; bottom: true; left: true; right: true }
   color: "transparent"
-  WlrLayershell.namespace: "macos-keyboard-toggle-hud"
+  WlrLayershell.namespace: "smyrnode.macos-keyboard-toggle-hud"
   WlrLayershell.layer: WlrLayer.Overlay
   WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
   exclusionMode: ExclusionMode.Ignore

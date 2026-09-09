@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Uninstaller for macos-keyboard-toggle plugin
+# Uninstaller for smyrnode.macos-keyboard-toggle plugin
 set -euo pipefail
 
 BINDINGS_FILE="${HOME}/.config/hypr/bindings.lua"
@@ -7,7 +7,7 @@ BINDINGS_FILE="${HOME}/.config/hypr/bindings.lua"
 echo "==> Uninstalling macOS Keyboard Toggle..."
 
 # 1. Disable bar widget and restore default
-omarchy plugin disable macos-keyboard-toggle >/dev/null 2>&1 || true
+omarchy plugin disable smyrnode.macos-keyboard-toggle >/dev/null 2>&1 || true
 omarchy plugin enable omarchy.keyboard-layout --section center --after omarchy.clock >/dev/null 2>&1 || true
 
 # 2. Remove keybinding from bindings.lua

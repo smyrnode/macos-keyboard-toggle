@@ -47,7 +47,7 @@ omarchy plugin add https://github.com/smyrnode/macos-keyboard-toggle --enable
 
 Once enabled, the status bar widget mounts automatically, links the binary to `~/.local/bin/omarchy-lang-toggle`, and registers the `Ctrl + Space` keybinding in Hyprland.
 
-For development, clone the repository into `~/.config/omarchy/plugins/macos-keyboard-toggle` and run `./install.sh`.
+For development, clone the repository into `~/.config/omarchy/plugins/smyrnode.macos-keyboard-toggle` and run `./install.sh`.
 
 ---
 
@@ -70,7 +70,7 @@ o.bind("CTRL + SPACE", "Toggle language (macOS-style)", "~/.local/bin/omarchy-la
 ## Architecture
 
 ```
-macos-keyboard-toggle/
+smyrnode.macos-keyboard-toggle/
 ├── manifest.json              # Omarchy shell plugin manifest (schemaVersion 1)
 ├── BarWidget.qml              # Quickshell status bar widget
 ├── SwitcherHud.qml            # Centered macOS switcher HUD with animated cursor
@@ -91,7 +91,7 @@ macos-keyboard-toggle/
 To remove the plugin and restore the default keyboard layout widget:
 
 ```bash
-~/.config/omarchy/plugins/macos-keyboard-toggle/uninstall.sh
+~/.config/omarchy/plugins/smyrnode.macos-keyboard-toggle/uninstall.sh
 ```
 
 ---

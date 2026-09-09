@@ -8,7 +8,7 @@ import "KeyboardLayoutModel.js" as KeyboardLayoutModel
 
 BarWidget {
   id: root
-  moduleName: "macos-keyboard-toggle"
+  moduleName: "smyrnode.macos-keyboard-toggle"
 
   property string layoutFull: ""
   property string keyboardName: ""
@@ -85,7 +85,7 @@ BarWidget {
   }
 
   IpcHandler {
-    target: "macos-keyboard-toggle"
+    target: "smyrnode.macos-keyboard-toggle"
     function ping(): string { return "pong" }
     function showHud(payloadJson: string): string {
       if (hudLoader.item) {
