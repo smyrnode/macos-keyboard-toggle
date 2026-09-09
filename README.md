@@ -12,7 +12,7 @@ This plugin brings the intuitive **macOS input switching behavior** to Omarchy:
 - **Quick tap (`Ctrl + Space`):** Always toggles between the **last two used layouts** (e.g., English ⇄ Russian), no matter how much time has passed between typing sessions.
 - **Rapid press / hold (within 1 second):** Cycles through **all remaining system layouts** (e.g., English → Russian → Greek → English...). Once you stop on a layout and begin typing, it is pinned as active and pairs with the previous layout.
 
-![Plugin Demo](plugin-demo.png)
+<p align="center"><img src="plugin-demo.png" alt="Plugin Demo"></p>
 
 ---
 
