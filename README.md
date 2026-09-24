@@ -1,67 +1,54 @@
 # macOS Keyboard Toggle for Omarchy
 
-> **macOS-style keyboard layout switcher & status bar indicator for [Omarchy Linux](https://omarchy.org/) (Hyprland).**
+> Keyboard layout switching the way macOS and GNOME do it — plus a language manager panel — for [Omarchy](https://omarchy.org/) (Hyprland).
 
----
+![Switcher HUD](preview.png)
 
-## Overview
+## What it does
 
-In standard Linux/Hyprland setups, keyboard layout switching with multiple languages cycles sequentially through every single layout in a fixed circular order (e.g., US → Russian → Greek → US).
+On most Linux desktops the layout hotkey walks through every language in a fixed circle: US → Russian → Greek → US. If you mostly type in two languages, you end up tapping twice to get back.
 
-This plugin brings the intuitive **macOS input switching behavior** to Omarchy:
-- **Quick tap (`Ctrl + Space`):** Always toggles between the **last two used layouts** (e.g., English ⇄ Russian), no matter how much time has passed between typing sessions.
-- **Rapid presses (within 1 second):** Cycles through **all remaining system layouts** (e.g., English → Russian → Greek → English...). Once you stop on a layout and begin typing, it is pinned as active and pairs with the previous layout.
-- **Right-click the bar label** to open the language manager: add or remove XKB languages and variants, pick the XKB switching shortcut, and turn macOS-style switching on or off (off = plain XKB shortcut cycling).
+This plugin makes switching behave like macOS and GNOME:
 
-![Plugin Demo](preview.png)
+- **Quick tap `Ctrl + Space`** — jump between the **two languages you used last**, no matter how long ago that was.
+- **Rapid taps (within 1 second)** — walk through **all** languages. With 3+ languages configured, a HUD card shows which one is selected.
+- **Left-click the bar label** — same switch, no hotkey needed.
+- **Right-click the bar label** — open the **language manager**.
 
----
+## Language manager
 
-## Features
+Right-click the language label in the bar to:
 
-- **macOS-style MRU (Most Recently Used) Switching:**
-  - Single tap toggles the active pair.
-  - Repeated presses within a 1-second window cycle through the full list of layouts.
-- **Status Bar Indicator (Next to Clock):**
-  - Compact Quickshell bar widget displaying the current language code (`EN`, `RU`, `EL`, etc.).
-  - Placed directly adjacent to the clock in the center section of the Omarchy bar.
-  - Left-clicking the widget triggers the macOS-style layout switch.
-  - Tooltip shows the full layout description.
-- **macOS-style Switcher HUD with Animated Cursor:**
-  - When cycling through 3+ languages (rapid presses), a centered floating card HUD appears displaying square tiles for all configured languages.
-  - A highlighted selection cursor smoothly slides between the language tiles as you cycle (`US` → `RU` → `GR`...).
-  - Fast single-tap toggling between the last two layouts remains completely silent without showing any popup.
-- **Fully Dynamic (Zero Hardcoding):**
-  - Automatically queries Hyprland for whatever layouts are configured in your system.
-  - Works with any number of languages (2, 3, 4, or more).
-  - Only manages switching logic — never alters or overwrites your keyboard layout options or variants.
-- **Language Manager Panel (right-click):**
-  - Add languages and variants from the installed XKB catalog with searchable pickers.
-  - Remove languages safely (Latin-first enforced, confirmation required, rollback on failure).
-  - Changes apply live through Hyprland IPC without reloading the session.
-- **Switching Modes:**
-  - *macOS-style (default):* MRU toggling between the two recent languages; the XKB `grp:` shortcut is kept out of the keymap so nothing double-switches.
-  - *XKB:* the chosen `grp:` shortcut cycles all languages sequentially, like stock setups.
+- see all configured languages and switch between them;
+- **add** languages and variants from the installed XKB catalog (searchable list);
+- **remove** languages (with confirmation — a Latin layout must stay first so `SUPER` + letter shortcuts keep working);
+- turn **macOS-style switching** on or off;
+- pick the **XKB switching shortcut** used when macOS-style switching is off.
 
----
+Changes are validated with `xkbcli`, applied live through Hyprland IPC, and rolled back automatically if the compositor rejects them — no session reload.
+
+## Switching modes
+
+Toggle **macOS-style switching** in the panel:
+
+| Mode | Hotkey behavior |
+|------|-----------------|
+| **macOS-style** (default) | `Ctrl + Space` toggles the last two languages; rapid taps cycle all. The XKB `grp:` shortcut stays out of the keymap, so nothing double-switches. |
+| **XKB** | The chosen XKB shortcut (default `Ctrl + Space`) cycles through all languages sequentially, like a stock setup. Left-click cycles too. |
 
 ## Installation
-
-Install and enable the plugin with a single command (or via Omarchy Menu → Plugins):
 
 ```bash
 omarchy plugin add https://github.com/smyrnode/macos-keyboard-toggle --enable
 ```
 
-Once enabled, the status bar widget mounts automatically, links the binary to `~/.local/bin/omarchy-lang-toggle`, and registers the `Ctrl + Space` keybinding in Hyprland.
+Or install via **Omarchy Menu → Plugins**. Once enabled, the bar widget mounts, the switcher script is linked to `~/.local/bin/omarchy-lang-toggle`, and the `Ctrl + Space` hotkey is registered.
 
-For development, clone the repository into `~/.config/omarchy/plugins/smyrnode.macos-keyboard-toggle` and run `./install.sh`.
+For development, clone into `~/.config/omarchy/plugins/smyrnode.macos-keyboard-toggle` and run `./install.sh`.
 
----
+## Hotkey
 
-## Keybinding Configuration
-
-The installer automatically adds the following shortcut to `~/.config/hypr/bindings.lua`:
+The installer registers this binding in `~/.config/hypr/bindings.lua`:
 
 ```lua
 -- macOS-style language toggle: quick tap toggles last 2, rapid taps cycle all
@@ -70,9 +57,7 @@ o.bind("CTRL + SPACE", "Toggle language (macOS-style)", "~/.local/bin/omarchy-la
 
 > **Note:** While the panel manages languages it applies `kb_layout`/`kb_options` via a generated toggle that overrides `~/.config/hypr/input.lua`. Keep XKB group-toggle options (such as `grp:ctrl_space_toggle`) out of `input.lua` — the panel owns them.
 
----
-
-## Architecture
+## How it works
 
 ```
 smyrnode.macos-keyboard-toggle/
@@ -82,6 +67,7 @@ smyrnode.macos-keyboard-toggle/
 ├── KeyboardLayoutModel.js     # Catalog parsing, labels, validation helpers
 ├── KeyboardSearchableDropdown.qml  # Bounded searchable XKB pickers
 ├── preview.png                # Plugin card preview / demo screenshot
+├── docs/screenshots/          # README screenshots
 ├── bin/
 │   ├── omarchy-lang-toggle    # MRU switching engine with IPC HUD support
 │   └── macos-keyboard-layout  # Layout/state manager with safe apply + rollback
@@ -93,8 +79,6 @@ smyrnode.macos-keyboard-toggle/
 ├── README.md                  # Documentation
 └── LICENSE                    # MIT License
 ```
-
-### State files
 
 Mutable data lives outside the Git checkout:
 
@@ -108,21 +92,16 @@ The JSON document is the source of truth; the Lua file is generated for
 Omarchy's user-toggle loader and applies `kb_layout`/`kb_variant`/`kb_options`
 on top of `~/.config/hypr/input.lua`.
 
----
-
 ## Uninstallation
-
-To remove the plugin and restore the default keyboard layout widget:
 
 ```bash
 ~/.config/omarchy/plugins/smyrnode.macos-keyboard-toggle/uninstall.sh
 ```
 
-This removes the keybinding, the `~/.local/bin/omarchy-lang-toggle` symlink,
-all state files and the generated toggle, then reloads Hyprland so
-`~/.config/hypr/input.lua` is authoritative again.
-
----
+This removes the hotkey, the `~/.local/bin/omarchy-lang-toggle` symlink, all
+state files and the generated toggle, restores the stock keyboard layout
+widget, and reloads Hyprland so `~/.config/hypr/input.lua` is authoritative
+again.
 
 ## License
 
