@@ -14,7 +14,7 @@ This plugin makes switching behave like macOS and GNOME:
 - **Rapid taps (within 1 second)** — walk through **all** languages. With 3+ languages configured, a HUD card shows which one is selected (custom bar labels are reused as HUD names).
 - **Left-click the bar label** — same switch, no hotkey needed.
 - **Scroll on the bar label** — walk through all languages, one notch at a time.
-- **Right-click the bar label** — open the **language manager**.
+- **Right-click or middle-click the bar label** — open the **language manager**.
 
 ## Language manager
 
@@ -24,7 +24,9 @@ Right-click the language label in the bar to:
 - **add** languages and variants from the installed XKB catalog (searchable list);
 - **remove** languages (with confirmation — a Latin layout must stay first so `SUPER` + letter shortcuts keep working);
 - **reorder** languages with the ↑/↓ buttons (the active language stays put);
+- **set a bar alias** per language (up to 6 characters, reused in the HUD);
 - turn **macOS-style switching** on or off;
+- **change the macOS-style hotkey** by pressing a new key combination;
 - pick the **XKB switching shortcut** used when macOS-style switching is off;
 - fix conflicts if a stray XKB `grp:` shortcut is live while macOS-style switching is on (that would switch twice on one press).
 

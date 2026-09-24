@@ -15,6 +15,7 @@ state_file=${SMYRNODE_KB_STATE_FILE:-$state_dir/smyrnode-macos-keyboard-toggle.j
 toggle_dir=$state_root/omarchy/toggles/hypr
 toggle_file=${SMYRNODE_KB_TOGGLE_FILE:-$toggle_dir/smyrnode-macos-keyboard-toggle.lua}
 lock_file=$state_dir/smyrnode-macos-keyboard-toggle.lock
+bindings_file=${SMYRNODE_KB_BINDINGS_FILE:-${HOME}/.config/hypr/bindings.lua}
 
 usage() {
   printf '%s\n' \
@@ -26,6 +27,7 @@ usage() {
     '       macos-keyboard-layout move INDEX up|down' \
     '       macos-keyboard-layout alias INDEX [VALUE]' \
     '       macos-keyboard-layout shortcut XKB_GRP_OPTION' \
+    '       macos-keyboard-layout hotkey COMBO' \
     '       macos-keyboard-layout mode mru|xkb' \
     '       macos-keyboard-layout reapply' \
     '       macos-keyboard-layout snapshot-current' \
@@ -61,6 +63,10 @@ validate_shape() {
     )) and
     ([.layouts[] | [.layout, .variant]] | unique | length) == (.layouts | length) and
     (.switchOption | type == "string" and test("^grp:[A-Za-z0-9_+-]+$")) and
+    (
+      (has("hotkey") | not) or
+      (.hotkey | type == "string" and test("^[A-Z0-9_+ ]+$"))
+    ) and
     (.nonGroupOptions | type == "array") and
     (all(.nonGroupOptions[]; type == "string" and test("^[A-Za-z0-9_:+-]+$") and (startswith("grp:") | not)))
   ' >/dev/null 2>&1 <<<"$1"
@@ -78,6 +84,36 @@ keymap_options() {
   else
     jq -r '[.nonGroupOptions[]] | map(select(length > 0)) | join(",")' <<<"$1"
   fi
+}
+
+normalize_hotkey() {
+  local combo=$1
+  printf '%s' "$combo" | tr '[:lower:]' '[:upper:]' | sed -E 's/[[:space:]]*\+[[:space:]]*/ + /g; s/^[[:space:]]+//; s/[[:space:]]+$//'
+}
+
+validate_hotkey() {
+  local combo=$1 key
+  [[ $combo =~ ^(SUPER|CTRL|ALT|SHIFT)([[:space:]]+\+[[:space:]]+(SUPER|CTRL|ALT|SHIFT))*([[:space:]]+\+[[:space:]]+[A-Z0-9_]+)$ ]] || return 1
+  key=${combo##*+ }
+  [[ $key =~ ^(SUPER|CTRL|ALT|SHIFT)$ ]] && return 1
+  return 0
+}
+
+read_bound_hotkey() {
+  sed -nE 's/^o\.bind\("([^"]+)".*omarchy-lang-toggle.*/\1/p' "$bindings_file" 2>/dev/null | head -n1
+}
+
+write_binding() {
+  local combo=$1 temp
+  [[ -f $bindings_file ]] || die "Bindings file $bindings_file not found; nothing was changed."
+  temp=$(mktemp --tmpdir="$(dirname "$bindings_file")" .smyrnode-kb-bind.XXXXXX)
+  sed '/omarchy-lang-toggle/d; /macOS-style language toggle/d' "$bindings_file" >"$temp"
+  while [[ -s $temp && -z $(tail -n1 "$temp") ]]; do
+    sed -i '$d' "$temp"
+  done
+  printf '\n-- macOS-style language toggle: quick tap toggles last 2, rapid taps cycle all\n' >>"$temp"
+  printf 'o.bind("%s", "Toggle language (macOS-style)", "~/.local/bin/omarchy-lang-toggle")\n' "$combo" >>"$temp"
+  mv -f -- "$temp" "$bindings_file"
 }
 
 hypr_option_string() {
@@ -107,7 +143,8 @@ snapshot_current() {
   payload=$(jq -cn \
     --arg layouts "$layouts" \
     --arg variants "$variants" \
-    --arg options "$options" '
+    --arg options "$options" \
+    --arg hotkey "$(read_bound_hotkey)" '
       ($layouts | split(",")) as $layoutList
       | ($variants | split(",")) as $variantList
       | ($options | split(",") | map(select(length > 0))) as $optionList
@@ -119,7 +156,8 @@ snapshot_current() {
             variant: ($variantList[.key] // "")
           }],
           switchOption: ([$optionList[] | select(startswith("grp:"))][-1] // "grp:ctrl_space_toggle"),
-          nonGroupOptions: [$optionList[] | select(startswith("grp:") | not)]
+          nonGroupOptions: [$optionList[] | select(startswith("grp:") | not)],
+          hotkey: (if $hotkey == "" then "CTRL + SPACE" else $hotkey end)
         }
     ')
   validate_candidate "$payload"
@@ -386,7 +424,7 @@ commit_metadata_candidate() {
   else
     mv -f -- "$temp_state" "$state_file"
   fi
-  jq -c . "$state_file"
+  status_json
 }
 
 ensure_state() {
@@ -515,6 +553,17 @@ case "$action" in
     flock -x 9
     payload=$(jq -c --arg shortcut "$shortcut" '.switchOption = $shortcut' "$state_file")
     commit_candidate "$payload" "$(active_index)"
+    ;;
+  hotkey)
+    combo=$(normalize_hotkey "${2:-}")
+    validate_hotkey "$combo" || die 'Use a key combination like "CTRL + SPACE" or "SUPER + SHIFT + S"; nothing was changed.'
+    ensure_state
+    exec 9>"$lock_file"
+    flock -x 9
+    payload=$(jq -c --arg hotkey "$combo" '.hotkey = $hotkey' "$state_file")
+    commit_metadata_candidate "$payload"
+    write_binding "$combo"
+    hyprctl reload >/dev/null 2>&1 || true
     ;;
   mode)
     mode=${2:-}

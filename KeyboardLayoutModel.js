@@ -148,6 +148,25 @@ function aliasError(value) {
   return ""
 }
 
+function normalizeHotkey(value) {
+  return String(value || "").toUpperCase().replace(/\s*\+\s*/g, " + ").trim()
+}
+
+function hotkeyError(value) {
+  var combo = normalizeHotkey(value)
+  if (combo === "") return "Press a key combination."
+  var message = "Use a modifier with a key, like CTRL + SPACE."
+  var parts = combo.split(" + ")
+  if (parts.length < 2) return message
+  var mods = /^(SUPER|CTRL|ALT|SHIFT)$/
+  var keyPart = parts[parts.length - 1]
+  for (var i = 0; i < parts.length - 1; i++) {
+    if (!mods.test(parts[i])) return message
+  }
+  if (mods.test(keyPart) || !/^[A-Z0-9_]+$/.test(keyPart)) return message
+  return ""
+}
+
 function normalizeLayouts(value) {
   if (!Array.isArray(value)) return []
   return value.filter(function(item) {
@@ -284,9 +303,11 @@ if (typeof module !== "undefined") module.exports = {
   eventKeyboardName: eventKeyboardName,
   findCatalogEntry: findCatalogEntry,
   heroPhrases: heroPhrases,
+  hotkeyError: hotkeyError,
   isTypedKeyboard: isTypedKeyboard,
   labelFor: labelFor,
   normalizeAlias: normalizeAlias,
+  normalizeHotkey: normalizeHotkey,
   normalizeLayouts: normalizeLayouts,
   parseCatalog: parseCatalog,
   popupPlacement: popupPlacement,

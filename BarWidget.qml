@@ -48,6 +48,9 @@ Panel {
   property string selectedVariant: ""
   property string selectedShortcut: ""
   property int pendingDeleteIndex: -1
+  property int editingAliasIndex: -1
+  property string selectedAlias: ""
+  property string pendingHotkey: ""
   property string statusText: ""
   property bool statusError: false
   property int cursorIndex: 0
@@ -63,6 +66,11 @@ Panel {
   }
   readonly property string switchMode: String(managedState.switchMode || "mru")
   readonly property string switchOption: String(managedState.switchOption || "grp:ctrl_space_toggle")
+  readonly property string mruHotkey: String(managedState.hotkey || "CTRL + SPACE")
+  readonly property var editingAliasLayout: editingAliasIndex >= 0 && editingAliasIndex < configuredLayouts.length ? configuredLayouts[editingAliasIndex] : null
+  readonly property string automaticAlias: editingAliasLayout ? Model.labelFor(catalog, editingAliasLayout.layout, editingAliasLayout.variant, "") : ""
+  readonly property string aliasPreview: editingAliasLayout ? Model.labelFor(catalog, editingAliasLayout.layout, editingAliasLayout.variant, selectedAlias) : ""
+  readonly property string aliasValidationError: Model.aliasError(selectedAlias)
   readonly property string conflictOption: {
     if (switchMode !== "mru") return ""
     var live = String(managedState.groupOption || "")
@@ -156,6 +164,8 @@ Panel {
   function openMain() {
     view = "main"
     resetAddEditor()
+    resetAliasEditor()
+    pendingHotkey = ""
     selectedShortcut = switchOption
     statusText = ""
     cursorIndex = Math.max(0, Math.min(cursorIndex, configuredLayouts.length + 1))
@@ -173,6 +183,96 @@ Panel {
     view = "add"
     resetAddEditor()
     statusText = ""
+  }
+
+  function startAlias(index) {
+    if (!stateReady || index < 0 || index >= configuredLayouts.length) return
+    editingAliasIndex = index
+    selectedAlias = String(configuredLayouts[index].alias || "")
+    aliasField.text = selectedAlias
+    view = "alias"
+    statusText = ""
+    Qt.callLater(function() {
+      aliasField.forceActiveFocus()
+      aliasField.selectAll()
+    })
+  }
+
+  function resetAliasEditor() {
+    editingAliasIndex = -1
+    selectedAlias = ""
+    aliasField.text = ""
+  }
+
+  function startHotkey() {
+    view = "hotkey"
+    pendingHotkey = ""
+    statusText = ""
+    Qt.callLater(function() {
+      hotkeyCatcher.forceActiveFocus()
+    })
+  }
+
+  function saveAlias() {
+    if (!editingAliasLayout) return
+    if (aliasValidationError !== "") {
+      statusError = true
+      statusText = aliasValidationError
+      return
+    }
+    runAction(["alias", String(editingAliasIndex), Model.normalizeAlias(selectedAlias)], "Bar alias updated.")
+  }
+
+  function useAutomaticAlias() {
+    runAction(["alias", String(editingAliasIndex), ""], "Bar alias cleared.")
+  }
+
+  function saveHotkey() {
+    if (Model.hotkeyError(pendingHotkey) !== "") return
+    runAction(["hotkey", Model.normalizeHotkey(pendingHotkey)], "Hotkey updated. New combo: " + Model.normalizeHotkey(pendingHotkey))
+  }
+
+  function hotkeyKeyName(key) {
+    if (key >= Qt.Key_A && key <= Qt.Key_Z) return String.fromCharCode(key)
+    if (key >= Qt.Key_0 && key <= Qt.Key_9) return String.fromCharCode(key)
+    if (key >= Qt.Key_F1 && key <= Qt.Key_F12) return "F" + (key - Qt.Key_F1 + 1)
+    switch (key) {
+      case Qt.Key_Space: return "SPACE"
+      case Qt.Key_Comma: return "COMMA"
+      case Qt.Key_Period: return "PERIOD"
+      case Qt.Key_Slash: return "SLASH"
+      case Qt.Key_Backslash: return "BACKSLASH"
+      case Qt.Key_Semicolon: return "SEMICOLON"
+      case Qt.Key_Apostrophe: return "APOSTROPHE"
+      case Qt.Key_Minus: return "MINUS"
+      case Qt.Key_Equal: return "EQUAL"
+      case Qt.Key_BracketLeft: return "BRACKETLEFT"
+      case Qt.Key_BracketRight: return "BRACKETRIGHT"
+      case Qt.Key_Tab: return "TAB"
+      case Qt.Key_Return: return "RETURN"
+      case Qt.Key_Backspace: return "BACKSPACE"
+      case Qt.Key_Delete: return "DELETE"
+      case Qt.Key_Home: return "HOME"
+      case Qt.Key_End: return "END"
+      case Qt.Key_PageUp: return "PAGEUP"
+      case Qt.Key_PageDown: return "PAGEDOWN"
+      case Qt.Key_Up: return "UP"
+      case Qt.Key_Down: return "DOWN"
+      case Qt.Key_Left: return "LEFT"
+      case Qt.Key_Right: return "RIGHT"
+      default: return ""
+    }
+  }
+
+  function hotkeyFromKeyEvent(event) {
+    var mods = []
+    if (event.modifiers & Qt.ControlModifier) mods.push("CTRL")
+    if (event.modifiers & Qt.MetaModifier) mods.push("SUPER")
+    if (event.modifiers & Qt.AltModifier) mods.push("ALT")
+    if (event.modifiers & Qt.ShiftModifier) mods.push("SHIFT")
+    var key = hotkeyKeyName(event.key)
+    if (key === "") return ""
+    return mods.concat([key]).join(" + ")
   }
 
   function resetAddEditor() {
@@ -285,6 +385,7 @@ Panel {
       refresh()
     } else {
       resetAddEditor()
+      resetAliasEditor()
     }
   }
 
@@ -472,6 +573,34 @@ Panel {
     }
   }
 
+  IpcHandler {
+    target: "smyrnode.macos-keyboard-toggle.demo"
+    function showMain(): void {
+      root.open()
+      Qt.callLater(root.openMain)
+    }
+    function showAdd(): void {
+      root.open()
+      Qt.callLater(root.startAdd)
+    }
+    function showShortcut(): void {
+      root.open()
+      Qt.callLater(root.startShortcut)
+    }
+    function showHotkey(): void {
+      root.open()
+      Qt.callLater(root.startHotkey)
+    }
+    function showAlias(): void {
+      root.open()
+      Qt.callLater(function() {
+        root.startAlias(0)
+        aliasField.text = "Work"
+        root.selectedAlias = "Work"
+      })
+    }
+  }
+
   Timer {
     id: refreshTimer
     interval: 300
@@ -512,7 +641,7 @@ Panel {
     horizontalMargin: 6
     tooltipText: root.activeDescription + "\nLeft-click: switch language\nScroll: cycle languages\nRight-click: manage languages"
     onPressed: function(mouseButton) {
-      if (mouseButton === Qt.RightButton) root.toggle()
+      if (mouseButton === Qt.RightButton || mouseButton === Qt.MiddleButton) root.toggle()
       else root.toggleLayout()
     }
     onWheelMoved: function(delta) {
@@ -535,7 +664,7 @@ Panel {
       id: keyCatcher
 
       anchors.fill: parent
-      blocked: languagePicker.popupOpen || variantPicker.popupOpen || shortcutPicker.popupOpen
+      blocked: languagePicker.popupOpen || variantPicker.popupOpen || shortcutPicker.popupOpen || aliasField.activeFocus || root.view === "hotkey"
       onMoveRequested: function(dx, dy) {
         if (deleteDialog.opened) {
           if (dx !== 0 || dy !== 0) deleteDialog.selectedIndex = deleteDialog.selectedIndex === 0 ? 1 : 0
@@ -559,6 +688,8 @@ Panel {
       onTextKey: function(text) {
         if ((text === "d" || text === "D") && root.view === "main" && root.cursorIndex < root.configuredLayouts.length)
           root.requestDelete(root.cursorIndex)
+        else if ((text === "e" || text === "E") && root.view === "main" && root.cursorIndex < root.configuredLayouts.length)
+          root.startAlias(root.cursorIndex)
       }
 
       Flickable {
@@ -581,13 +712,13 @@ Panel {
             width: parent.width
             foreground: Color.foreground
             fontFamily: Style.font.family
-            title: root.view === "main" ? root.activeDescription : (root.view === "shortcut" ? "Switch languages" : "Add a language")
-            meta: root.view === "main" ? root.heroPhrase : (root.view === "shortcut" ? "XKB-supported shortcuts" : "Installed XKB layouts")
-            detail: root.view === "main" ? root.layoutLabel : ""
+            title: root.view === "main" ? root.activeDescription : (root.view === "shortcut" ? "Switch shortcut" : (root.view === "alias" ? "Edit bar alias" : (root.view === "hotkey" ? "macOS-style hotkey" : "Add a language")))
+            meta: root.view === "main" ? root.heroPhrase : (root.view === "shortcut" ? "XKB-supported shortcuts" : (root.view === "alias" && root.editingAliasLayout ? Model.descriptionFor(root.catalog, root.editingAliasLayout.layout, root.editingAliasLayout.variant) : (root.view === "hotkey" ? "Key combination to capture" : "Installed XKB layouts")))
+            detail: root.view === "main" ? root.layoutLabel : (root.view === "alias" ? root.aliasPreview : (root.view === "hotkey" ? Model.normalizeHotkey(root.pendingHotkey) || root.mruHotkey : ""))
 
             iconComponent: Component {
               Text {
-                text: root.view === "main" ? "󰌌" : (root.view === "shortcut" ? "󰁔" : "󰐕")
+                text: root.view === "main" ? "󰌌" : (root.view === "shortcut" ? "󰁔" : (root.view === "alias" ? "󰏫" : (root.view === "hotkey" ? "󰌒" : "󰐕")))
                 color: Color.foreground
                 font.family: Style.font.family
                 font.pixelSize: Style.font.display
@@ -694,7 +825,7 @@ Panel {
                   }
 
                   Column {
-                    width: Math.max(0, parent.width - aliasBadge.width - moveUpButton.width - moveDownButton.width - deleteButton.width - parent.spacing * 4)
+                    width: Math.max(0, parent.width - aliasBadge.width - editAliasButton.width - moveUpButton.width - moveDownButton.width - deleteButton.width - parent.spacing * 5)
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: Style.space(1)
 
@@ -716,6 +847,18 @@ Panel {
                       font.pixelSize: Style.font.caption
                       elide: Text.ElideRight
                     }
+                  }
+
+                  PanelActionButton {
+                    id: editAliasButton
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    iconText: "󰏫"
+                    tooltipText: "Edit bar alias"
+                    foreground: Color.foreground
+                    fontFamily: Style.font.family
+                    enabled: root.stateReady && !applyProc.running
+                    onClicked: root.startAlias(index)
                   }
 
                   PanelActionButton {
@@ -806,6 +949,28 @@ Panel {
               width: parent.width
               leftPadding: Style.spacing.controlPaddingX
               text: root.shortcutLabel(root.switchOption) + (root.switchMode === "mru" ? " (active in XKB mode)" : "")
+              color: Qt.darker(Color.foreground, 1.45)
+              font.family: Style.font.family
+              font.pixelSize: Style.font.caption
+              elide: Text.ElideRight
+            }
+
+            Button {
+              width: parent.width
+              text: "macOS-style hotkey"
+              iconText: "󰌒"
+              leftAlign: true
+              focusable: true
+              enabled: root.stateReady && !applyProc.running
+              foreground: Color.foreground
+              fontFamily: Style.font.family
+              onClicked: root.startHotkey()
+            }
+
+            Text {
+              width: parent.width
+              leftPadding: Style.spacing.controlPaddingX
+              text: root.mruHotkey + (root.switchMode === "xkb" ? " (inactive in XKB mode)" : "")
               color: Qt.darker(Color.foreground, 1.45)
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
@@ -962,6 +1127,203 @@ Panel {
                 accent: Color.accent
                 fontFamily: Style.font.family
                 onClicked: root.addSelected()
+              }
+            }
+          }
+
+          Column {
+            visible: root.view === "alias"
+            width: parent.width
+            spacing: Style.space(12)
+
+            Text {
+              width: parent.width
+              text: "Choose a compact label for this language in the bar and HUD. Clear it to return to the automatic \u201C" + root.automaticAlias + "\u201D label."
+              color: Qt.darker(Color.foreground, 1.45)
+              font.family: Style.font.family
+              font.pixelSize: Style.font.body
+              wrapMode: Text.WordWrap
+            }
+
+            TextField {
+              id: aliasField
+
+              width: parent.width
+              placeholderText: root.automaticAlias
+              foreground: Color.foreground
+              accent: Color.accent
+              font.family: Style.font.family
+              font.pixelSize: Style.font.body
+              onTextChanged: root.selectedAlias = text
+              onAccepted: {
+                if (root.aliasValidationError === "" && Model.normalizeAlias(root.selectedAlias) !== String(root.editingAliasLayout ? root.editingAliasLayout.alias || "" : ""))
+                  root.saveAlias()
+              }
+              Keys.onPressed: function(event) {
+                if (event.key === Qt.Key_Escape) {
+                  root.openMain()
+                  event.accepted = true
+                }
+              }
+            }
+
+            Row {
+              width: parent.width
+              spacing: Style.space(8)
+
+              Text {
+                width: Math.max(0, parent.width - aliasPreviewBadge.width - parent.spacing)
+                anchors.verticalCenter: parent.verticalCenter
+                text: root.aliasValidationError !== "" ? root.aliasValidationError : "Preview · " + Model.aliasLength(Model.normalizeAlias(root.selectedAlias)) + " / 6"
+                color: root.aliasValidationError !== "" ? Color.urgent : Qt.darker(Color.foreground, 1.45)
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+                wrapMode: Text.WordWrap
+              }
+
+              BorderSurface {
+                id: aliasPreviewBadge
+
+                width: Math.max(Style.space(34), aliasPreviewText.implicitWidth + Style.spacing.sm * 2)
+                height: Style.space(28)
+                anchors.verticalCenter: parent.verticalCenter
+                color: "transparent"
+                borderSpec: Border.controlSpec("selected", Color.foreground, Color.accent)
+                radius: Style.cornerRadius
+
+                Text {
+                  id: aliasPreviewText
+                  anchors.centerIn: parent
+                  text: root.aliasPreview
+                  color: Color.foreground
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                }
+              }
+            }
+
+            Row {
+              anchors.right: parent.right
+              spacing: Style.space(8)
+
+              Button {
+                text: "Cancel"
+                focusable: true
+                bordered: true
+                foreground: Color.foreground
+                fontFamily: Style.font.family
+                onClicked: root.openMain()
+              }
+
+              Button {
+                text: "Use default"
+                focusable: true
+                bordered: true
+                enabled: root.editingAliasLayout && root.editingAliasLayout.alias !== "" && !applyProc.running
+                foreground: Color.foreground
+                fontFamily: Style.font.family
+                onClicked: root.useAutomaticAlias()
+              }
+
+              Button {
+                text: applyProc.running ? "Saving…" : "Save"
+                focusable: true
+                bordered: true
+                enabled: root.stateReady && !applyProc.running && root.aliasValidationError === "" && Model.normalizeAlias(root.selectedAlias) !== String(root.editingAliasLayout ? root.editingAliasLayout.alias || "" : "")
+                foreground: Color.foreground
+                accent: Color.accent
+                fontFamily: Style.font.family
+                onClicked: root.saveAlias()
+              }
+            }
+          }
+
+          Column {
+            visible: root.view === "hotkey"
+            width: parent.width
+            spacing: Style.space(12)
+
+            Text {
+              width: parent.width
+              text: "Press the key combination for macOS-style switching. Currently: " + root.mruHotkey + "."
+              color: Qt.darker(Color.foreground, 1.45)
+              font.family: Style.font.family
+              font.pixelSize: Style.font.body
+              wrapMode: Text.WordWrap
+            }
+
+            Item {
+              id: hotkeyCatcher
+
+              width: parent.width
+              height: captureBox.height
+              activeFocusOnTab: true
+              Keys.onPressed: function(event) {
+                if (event.key === Qt.Key_Escape) {
+                  root.openMain()
+                  event.accepted = true
+                  return
+                }
+                var combo = root.hotkeyFromKeyEvent(event)
+                if (combo === "") return
+                root.pendingHotkey = combo
+                root.statusText = ""
+                root.statusError = false
+                event.accepted = true
+              }
+
+              BorderSurface {
+                id: captureBox
+
+                width: parent.width
+                height: Style.spacing.controlHeight + Style.space(12)
+                radius: Style.cornerRadius
+                color: Style.controlFill(false, true, Color.foreground, Color.accent)
+                borderSpec: Border.controlSpec("focus", Color.foreground, Color.accent)
+
+                Text {
+                  anchors.centerIn: parent
+                  text: root.pendingHotkey === "" ? "Press a key combination…" : Model.normalizeHotkey(root.pendingHotkey)
+                  color: root.pendingHotkey === "" ? Qt.darker(Color.foreground, 1.5) : Color.foreground
+                  font.family: Style.font.family
+                  font.pixelSize: Style.font.body
+                  font.bold: true
+                }
+              }
+            }
+
+            Text {
+              visible: root.pendingHotkey !== "" && Model.hotkeyError(root.pendingHotkey) !== ""
+              width: parent.width
+              text: Model.hotkeyError(root.pendingHotkey)
+              color: Color.urgent
+              font.family: Style.font.family
+              font.pixelSize: Style.font.caption
+            }
+
+            Row {
+              anchors.right: parent.right
+              spacing: Style.space(8)
+
+              Button {
+                text: "Cancel"
+                focusable: true
+                bordered: true
+                foreground: Color.foreground
+                fontFamily: Style.font.family
+                onClicked: root.openMain()
+              }
+
+              Button {
+                text: applyProc.running ? "Saving…" : "Apply"
+                focusable: true
+                bordered: true
+                enabled: root.stateReady && !applyProc.running && Model.hotkeyError(root.pendingHotkey) === "" && Model.normalizeHotkey(root.pendingHotkey) !== root.mruHotkey
+                foreground: Color.foreground
+                accent: Color.accent
+                fontFamily: Style.font.family
+                onClicked: root.saveHotkey()
               }
             }
           }

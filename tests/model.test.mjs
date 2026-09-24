@@ -107,6 +107,19 @@ test("normalizeAlias trims", () => {
   assert.equal(model.normalizeAlias("  Ok  "), "Ok")
 })
 
+test("normalizeHotkey canonicalizes combos", () => {
+  assert.equal(model.normalizeHotkey("ctrl+space"), "CTRL + SPACE")
+  assert.equal(model.normalizeHotkey("super + shift + s"), "SUPER + SHIFT + S")
+})
+
+test("hotkeyError requires a modifier and a key", () => {
+  assert.equal(model.hotkeyError("ctrl + space"), "")
+  assert.equal(model.hotkeyError("SUPER + SHIFT + S"), "")
+  assert.match(model.hotkeyError("JUSTONEKEY"), /modifier/)
+  assert.match(model.hotkeyError("CTRL + SHIFT"), /modifier/)
+  assert.match(model.hotkeyError(""), /Press/)
+})
+
 test("normalizeLayouts keeps valid entries and latin flags", () => {
   const out = model.normalizeLayouts([
     { layout: "us", variant: "", latin: true, alias: "Me" },

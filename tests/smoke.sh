@@ -147,4 +147,24 @@ pass "move latin-first guard"
 grep -q 'eval' "$STUB_LOG" || fail "reapply must hit hyprctl eval"
 pass "reapply forces apply"
 
+# 17. hotkey rewrites the binding and records the combo
+BINDINGS="$WORK/bindings.lua"
+printf '%s\n' '-- keep me' 'o.bind("SUPER + E", "Editor", "nvim")' >"$BINDINGS"
+printf '\n-- macOS-style language toggle\n' >>"$BINDINGS"
+printf 'o.bind("CTRL + SPACE", "Toggle language (macOS-style)", "~/.local/bin/omarchy-lang-toggle")\n' >>"$BINDINGS"
+out=$(SMYRNODE_KB_BINDINGS_FILE="$BINDINGS" "$HELPER" hotkey "super + shift + s") || fail "hotkey should succeed"
+jq -e '.hotkey == "SUPER + SHIFT + S"' <<<"$out" >/dev/null || fail "hotkey should be normalized and stored"
+grep -q 'o.bind("SUPER + SHIFT + S", "Toggle language (macOS-style)"' "$BINDINGS" || fail "binding should use the new combo"
+if grep -q 'CTRL + SPACE' "$BINDINGS"; then fail "old combo should be gone"; fi
+grep -q 'SUPER + E' "$BINDINGS" || fail "foreign bindings must survive"
+out=$(SMYRNODE_KB_BINDINGS_FILE="$BINDINGS" "$HELPER" status)
+jq -e '.hotkey == "SUPER + SHIFT + S"' <<<"$out" >/dev/null || fail "status should report the hotkey"
+if SMYRNODE_KB_BINDINGS_FILE="$BINDINGS" "$HELPER" hotkey "JUSTONEKEY" >/dev/null 2>&1; then fail "bare key should fail"; fi
+if SMYRNODE_KB_BINDINGS_FILE="$BINDINGS" "$HELPER" hotkey "CTRL + +" >/dev/null 2>&1; then fail "modifier-only combo should fail"; fi
+if SMYRNODE_KB_BINDINGS_FILE="$BINDINGS" "$HELPER" hotkey "CTRL + SHIFT" >/dev/null 2>&1; then fail "modifier as key should fail"; fi
+cp "$BINDINGS" "$WORK/bindings.once"
+SMYRNODE_KB_BINDINGS_FILE="$BINDINGS" "$HELPER" hotkey "SUPER + SHIFT + S" >/dev/null || fail "repeat hotkey should succeed"
+cmp -s "$WORK/bindings.once" "$BINDINGS" || fail "hotkey rewrite must be idempotent"
+pass "hotkey rewrites binding"
+
 echo "ALL TESTS PASSED"
