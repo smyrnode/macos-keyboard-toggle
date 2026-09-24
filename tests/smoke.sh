@@ -75,15 +75,21 @@ pass "add fr"
 if "$HELPER" add fr >/dev/null 2>&1; then fail "duplicate add should fail"; fi
 pass "duplicate add refused"
 
-# 4. xkb mode brings the group shortcut into the keymap
+# 4. switching mode is metadata-only: the keymap never gains a grp option
+cp "$TOGGLE" "$WORK/toggle.before"
+: >"$STUB_LOG"
 out=$("$HELPER" mode xkb) || fail "mode xkb should succeed"
-grep -q 'grp:ctrl_space_toggle' "$TOGGLE" || fail "xkb mode should enable the group shortcut"
-pass "mode xkb enables shortcut"
-
-# 5. mru mode takes it back out
+jq -e '.switchMode == "xkb" and (has("switchOption") | not)' <<<"$out" >/dev/null || fail "mode xkb should flip the flag without switchOption"
+cmp -s "$WORK/toggle.before" "$TOGGLE" || fail "mode change must not regenerate the keymap"
+grep -q 'eval' "$STUB_LOG" && fail "mode change must not hit hyprctl eval"
+grep -q 'grp:' "$TOGGLE" && fail "keymap must never contain a grp option"
 out=$("$HELPER" mode mru) || fail "mode mru should succeed"
-grep -q 'grp:' "$TOGGLE" && fail "mru mode should drop the group shortcut"
-pass "mru mode drops shortcut"
+jq -e '.switchMode == "mru"' <<<"$out" >/dev/null || fail "mode mru should flip the flag back"
+pass "mode is metadata-only"
+
+# 5. the shortcut command is gone: the Switching hotkey owns switching
+if "$HELPER" shortcut grp:alts_toggle >/dev/null 2>&1; then fail "shortcut command should be gone"; fi
+pass "shortcut command removed"
 
 # 6. removing the only leading Latin layout is refused
 if "$HELPER" remove 0 >/dev/null 2>&1; then fail "removing us (latin-first) should fail"; fi
@@ -103,32 +109,14 @@ cmp -s "$WORK/toggle.before" "$TOGGLE" || fail "alias must not regenerate the ke
 if "$HELPER" alias 0 "toolong1" >/dev/null 2>&1; then fail "long alias should fail"; fi
 pass "alias metadata-only"
 
-# 9. shortcut change in mru mode updates state only
-cp "$TOGGLE" "$WORK/toggle.before"
-: >"$STUB_LOG"
-out=$("$HELPER" shortcut grp:alts_toggle) || fail "shortcut should succeed"
-jq -e '.switchOption == "grp:alts_toggle"' <<<"$out" >/dev/null || fail "shortcut should be stored"
-cmp -s "$WORK/toggle.before" "$TOGGLE" || fail "shortcut in mru mode must not reapply the keymap"
-grep -q 'eval' "$STUB_LOG" && fail "shortcut in mru mode must not hit hyprctl eval"
-pass "shortcut in mru mode is metadata-only"
-
-# 10. the stored shortcut is what xkb mode enables
-"$HELPER" mode xkb >/dev/null || fail "mode xkb should succeed"
-grep -q 'grp:alts_toggle' "$TOGGLE" || fail "xkb mode should enable the chosen shortcut"
-pass "xkb mode uses chosen shortcut"
-
-# 11. invalid shortcut is refused
-if "$HELPER" shortcut grp:bogus_option >/dev/null 2>&1; then fail "bogus shortcut should fail"; fi
-pass "invalid shortcut refused"
-
-# 12. status reports the live XKB group option (for conflict detection)
+# 9. status reports the live XKB group option (for conflict detection)
 out=$("$HELPER" status) || fail "status should succeed"
 jq -e '.groupOption == ""' <<<"$out" >/dev/null || fail "groupOption should be empty without a grp option"
 out=$(STUB_KB_OPTIONS="compose:caps,grp:ctrl_space_toggle" "$HELPER" status) || fail "status should succeed"
 jq -e '.groupOption == "grp:ctrl_space_toggle"' <<<"$out" >/dev/null || fail "groupOption should report the live grp option"
 pass "groupOption reported"
 
-# 13. move swaps neighbors
+# 10. move swaps neighbors
 "$HELPER" add gb >/dev/null || fail "add gb should succeed"
 out=$("$HELPER" move 0 down) || fail "move down should succeed"
 jq -e '.layouts[0].layout == "fr" and .layouts[1].layout == "us" and .layouts[2].layout == "gb"' <<<"$out" >/dev/null || fail "us should swap with fr"
@@ -136,25 +124,25 @@ out=$("$HELPER" move 1 up) || fail "move up should succeed"
 jq -e '.layouts[0].layout == "us" and .layouts[1].layout == "fr"' <<<"$out" >/dev/null || fail "us should move back to front"
 pass "move up/down swaps"
 
-# 14. move at the edges is refused
+# 11. move at the edges is refused
 if "$HELPER" move 0 up >/dev/null 2>&1; then fail "move 0 up should fail"; fi
 if "$HELPER" move 2 down >/dev/null 2>&1; then fail "move last down should fail"; fi
 pass "move edges refused"
 
-# 15. move cannot put a non-Latin layout first
+# 12. move cannot put a non-Latin layout first
 "$HELPER" add ru >/dev/null || fail "add ru should succeed"  # [us, fr, gb, ru]
 "$HELPER" move 3 up >/dev/null || fail "move 3 up should succeed"  # [us, fr, ru, gb]
 "$HELPER" move 2 up >/dev/null || fail "move 2 up should succeed"  # [us, ru, fr, gb]
 if "$HELPER" move 1 up >/dev/null 2>&1; then fail "non-latin-first move should fail"; fi
 pass "move latin-first guard"
 
-# 16. reapply forces a live apply even when nothing changed
+# 13. reapply forces a live apply even when nothing changed
 : >"$STUB_LOG"
 "$HELPER" reapply >/dev/null || fail "reapply should succeed"
 grep -q 'eval' "$STUB_LOG" || fail "reapply must hit hyprctl eval"
 pass "reapply forces apply"
 
-# 17. hotkey rewrites the binding and records the combo
+# 14. hotkey rewrites the binding and records the combo
 BINDINGS="$WORK/bindings.lua"
 printf '%s\n' '-- keep me' 'o.bind("SUPER + E", "Editor", "nvim")' >"$BINDINGS"
 printf '\n-- macOS-style language toggle\n' >>"$BINDINGS"
@@ -174,7 +162,7 @@ SMYRNODE_KB_BINDINGS_FILE="$BINDINGS" "$HELPER" hotkey "SUPER + SHIFT + S" >/dev
 cmp -s "$WORK/bindings.once" "$BINDINGS" || fail "hotkey rewrite must be idempotent"
 pass "hotkey rewrites binding"
 
-# 18. switching syncs the fcitx5 input method so typing follows
+# 15. switching syncs the fcitx5 input method so typing follows
 : >"$STUB_LOG"
 "$HELPER" set 1 >/dev/null || fail "set should succeed"
 grep -q 'fcitx -s keyboard-ru' "$STUB_LOG" || fail "switching must sync the fcitx5 input method"

@@ -26,7 +26,6 @@ usage() {
     '       macos-keyboard-layout remove INDEX' \
     '       macos-keyboard-layout move INDEX up|down' \
     '       macos-keyboard-layout alias INDEX [VALUE]' \
-    '       macos-keyboard-layout shortcut XKB_GRP_OPTION' \
     '       macos-keyboard-layout hotkey COMBO' \
     '       macos-keyboard-layout mode mru|xkb' \
     '       macos-keyboard-layout reapply' \
@@ -62,7 +61,6 @@ validate_shape() {
       )
     )) and
     ([.layouts[] | [.layout, .variant]] | unique | length) == (.layouts | length) and
-    (.switchOption | type == "string" and test("^grp:[A-Za-z0-9_+-]+$")) and
     (
       (has("hotkey") | not) or
       (.hotkey | type == "string" and test("^[A-Z0-9_+ ]+$"))
@@ -75,15 +73,12 @@ validate_shape() {
 layout_csv() { jq -r '[.layouts[].layout] | join(",")' <<<"$1"; }
 variant_csv() { jq -r '[.layouts[].variant] | join(",")' <<<"$1"; }
 
-# The options that actually reach the keymap: the group shortcut is only
-# active in xkb mode, so the MRU script owns the hotkey without a second
-# switcher living in the keymap.
+# The options that actually reach the keymap. XKB group shortcuts (grp:*) are
+# deliberately never included: the Switching hotkey owns switching in both
+# modes (MRU toggle or sequential cycling), and a grp option on the same key
+# would switch twice.
 keymap_options() {
-  if [[ $(jq -r '.switchMode' <<<"$1") == xkb ]]; then
-    jq -r '[.nonGroupOptions[], .switchOption] | map(select(length > 0)) | join(",")' <<<"$1"
-  else
-    jq -r '[.nonGroupOptions[]] | map(select(length > 0)) | join(",")' <<<"$1"
-  fi
+  jq -r '[.nonGroupOptions[]] | map(select(length > 0)) | join(",")' <<<"$1"
 }
 
 normalize_hotkey() {
@@ -155,7 +150,6 @@ snapshot_current() {
             layout: .value,
             variant: ($variantList[.key] // "")
           }],
-          switchOption: ([$optionList[] | select(startswith("grp:"))][-1] // "grp:ctrl_space_toggle"),
           nonGroupOptions: [$optionList[] | select(startswith("grp:") | not)],
           hotkey: (if $hotkey == "" then "CTRL + SPACE" else $hotkey end)
         }
@@ -184,20 +178,15 @@ is_latin() {
 }
 
 validate_candidate() {
-  local payload=$1 first_layout first_variant shortcut catalog option
+  local payload=$1 first_layout first_variant catalog option
   validate_shape "$payload" || die 'Invalid keyboard-layout state; nothing was changed.'
-  shortcut=$(jq -r '.switchOption' <<<"$payload")
-  if [[ $shortcut =~ _switch(_|$) ]] \
-    || [[ $shortcut != grp:toggle && ! $shortcut =~ _toggle(_|$) && ! $shortcut =~ _select$ ]]; then
-    die 'Choose a supported XKB layout-switching shortcut; nothing was changed.'
-  fi
   catalog=$(xkbcli list --load-exotic 2>/dev/null) || die 'The installed XKB catalog could not be read; nothing was changed.'
   while IFS= read -r option; do
     [[ -z $option ]] && continue
     grep -Fqx "  - name: '$option'" <<<"$catalog" \
       || die "XKB does not provide option '$option'; nothing was changed."
-  done < <(jq -r '.nonGroupOptions[], .switchOption' <<<"$payload")
-  compile_layout "$payload" || die 'XKB rejected that layout, variant, or shortcut; nothing was changed.'
+  done < <(jq -r '.nonGroupOptions[]' <<<"$payload")
+  compile_layout "$payload" || die 'XKB rejected that layout, variant, or options; nothing was changed.'
   first_layout=$(jq -r '.layouts[0].layout' <<<"$payload")
   first_variant=$(jq -r '.layouts[0].variant' <<<"$payload")
   is_latin "$first_layout" "$first_variant" || die "Keep a Latin layout first so SUPER+letter shortcuts continue to work."
@@ -343,7 +332,9 @@ commit_candidate() {
   old_state=$(mktemp --tmpdir="$state_dir" .smyrnode-kb-old-state.XXXXXX)
   old_toggle=$(mktemp --tmpdir="$toggle_dir" .smyrnode-kb-old-toggle.XXXXXX)
 
-  jq . <<<"$payload" >"$temp_state"
+  # switchOption is a legacy field from when XKB group shortcuts owned
+  # switching; drop it so old state files migrate away from it.
+  jq 'del(.switchOption)' <<<"$payload" >"$temp_state"
   chmod 0644 "$temp_state"
   render_toggle "$payload" "$temp_toggle"
 
@@ -428,7 +419,7 @@ commit_metadata_candidate() {
   validate_shape "$payload" || die 'Invalid keyboard-layout state; nothing was changed.'
   ensure_dirs
   temp_state=$(mktemp --tmpdir="$state_dir" .smyrnode-kb-state.XXXXXX)
-  jq . <<<"$payload" >"$temp_state"
+  jq 'del(.switchOption)' <<<"$payload" >"$temp_state"
   chmod 0644 "$temp_state"
   if [[ -f $state_file ]] \
     && [[ "$(jq -S -c . "$temp_state")" == "$(jq -S -c . "$state_file")" ]]; then
@@ -557,15 +548,6 @@ case "$action" in
     ' "$state_file")
     commit_metadata_candidate "$payload"
     ;;
-  shortcut)
-    shortcut=${2:-}
-    [[ $shortcut =~ ^grp:[A-Za-z0-9_+-]+$ ]] || usage
-    ensure_state
-    exec 9>"$lock_file"
-    flock -x 9
-    payload=$(jq -c --arg shortcut "$shortcut" '.switchOption = $shortcut' "$state_file")
-    commit_candidate "$payload" "$(active_index)"
-    ;;
   hotkey)
     combo=$(normalize_hotkey "${2:-}")
     validate_hotkey "$combo" || die 'Use a key combination like "CTRL + SPACE" or "SUPER + SHIFT + S"; nothing was changed.'
@@ -583,8 +565,10 @@ case "$action" in
     ensure_state
     exec 9>"$lock_file"
     flock -x 9
+    # Switching mode is purely behavioral (MRU toggle vs sequential cycling
+    # on the same hotkey), so it never touches the keymap.
     payload=$(jq -c --arg mode "$mode" '.switchMode = $mode' "$state_file")
-    commit_candidate "$payload" "$(active_index)"
+    commit_metadata_candidate "$payload"
     ;;
   *)
     usage

@@ -222,15 +222,20 @@ def save_state(state):
 
 def main():
     settings = load_settings()
-    if settings.get("switchMode", "mru") != "mru":
-        # XKB owns the hotkey in this mode; never switch twice.
-        return
-
     configured_layouts = get_configured_layouts()
     num_layouts = len(configured_layouts)
 
     if num_layouts < 2:
         # Nothing to switch between if there is only 1 layout
+        return
+
+    if settings.get("switchMode", "mru") != "mru":
+        # macOS-style switching is off: plain sequential cycling on the same
+        # hotkey (what XKB group toggling does), but through our switcher so
+        # fcitx5 input methods stay in sync.
+        devices = get_hyprland_devices()
+        current_idx, _ = get_active_keyboard_info(devices, num_layouts)
+        apply_layout_to_typed(devices, (current_idx + 1) % num_layouts, configured_layouts)
         return
 
     os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
