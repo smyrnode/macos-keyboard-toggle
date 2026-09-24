@@ -18,7 +18,7 @@ echo "  [x] Linked omarchy-lang-toggle to ${BIN_DIR}/omarchy-lang-toggle"
 if [[ -f "$BINDINGS_FILE" ]]; then
   if ! grep -q "omarchy-lang-toggle" "$BINDINGS_FILE"; then
     echo "" >> "$BINDINGS_FILE"
-    echo "-- macOS-style language toggle: quick tap toggles last 2, hold/repeat cycles all" >> "$BINDINGS_FILE"
+    echo "-- macOS-style language toggle: quick tap toggles last 2, rapid taps cycle all" >> "$BINDINGS_FILE"
     echo 'o.bind("CTRL + SPACE", "Toggle language (macOS-style)", "~/.local/bin/omarchy-lang-toggle")' >> "$BINDINGS_FILE"
     echo "  [x] Added CTRL+SPACE binding to ${BINDINGS_FILE}"
   else

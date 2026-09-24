@@ -2,16 +2,19 @@
 """
 macOS-style keyboard layout switcher for Omarchy / Hyprland.
 - Normal press (single tap): toggles between the last TWO used layouts.
-- Rapid / hold press (within CYCLE_TIMEOUT_MS): cycles through all available layouts.
+- Rapid presses (within CYCLE_TIMEOUT_MS): cycles through all available layouts.
 - Works dynamically with ANY layouts configured in Hyprland (zero hardcoding).
 """
 
+import fcntl
 import json
 import os
 import subprocess
 import time
 
-STATE_FILE = os.path.expanduser("~/.cache/omarchy-lang-toggle.json")
+STATE_FILE = os.path.expanduser("~/.local/state/omarchy-lang-toggle.json")
+LEGACY_STATE_FILE = os.path.expanduser("~/.cache/omarchy-lang-toggle.json")
+LOCK_FILE = STATE_FILE + ".lock"
 CYCLE_TIMEOUT_MS = 1000  # 1 second window to continue cycling
 
 
@@ -49,13 +52,13 @@ def is_typed_keyboard(name):
     return not (
         "consumer" in n
         or "system" in n
-        or "-1" in n
         or "virtual" in n
         or "fcitx" in n
         or "power-button" in n
         or "sleep-button" in n
         or "lid-switch" in n
         or "video-bus" in n
+        or "avrcp" in n
     )
 
 
@@ -75,13 +78,13 @@ def get_active_keyboard_info(devices, num_layouts):
     return idx, keymap
 
 
-def apply_layout_to_all(devices, target_idx):
-    """Switch layout for all real keyboards."""
+def apply_layout_to_typed(devices, target_idx):
+    """Switch layout on typing keyboards only (skip buttons, consumer/system controls)."""
     keyboards = devices.get("keyboards", [])
     target_str = str(target_idx)
     for kb in keyboards:
         name = kb.get("name", "")
-        if name:
+        if name and is_typed_keyboard(name):
             subprocess.run(
                 ["hyprctl", "switchxkblayout", name, target_str],
                 stdout=subprocess.DEVNULL,
@@ -117,18 +120,9 @@ COMMON_NAMES = {
 }
 
 
-def show_switcher_hud(target_idx, configured_layouts, updated_keymap):
+def show_switcher_hud(target_idx, configured_layouts):
     """Show macOS-style card switcher HUD via Omarchy Shell IPC."""
-    names = []
-    for idx, code in enumerate(configured_layouts):
-        c = code.lower().strip()
-        if idx == target_idx and updated_keymap:
-            clean_k = updated_keymap.split(", with")[0].split("(")[0].strip()
-            names.append(clean_k if clean_k else COMMON_NAMES.get(c, code.upper()))
-        elif c in COMMON_NAMES:
-            names.append(COMMON_NAMES[c])
-        else:
-            names.append(code.upper())
+    names = [COMMON_NAMES.get(code.lower().strip(), code.upper()) for code in configured_layouts]
 
     payload = json.dumps({
         "activeIndex": target_idx,
@@ -162,6 +156,30 @@ def show_osd(layout_name):
         pass
 
 
+def load_state():
+    for path in (STATE_FILE, LEGACY_STATE_FILE):
+        if os.path.exists(path):
+            try:
+                with open(path, "r") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+    return None
+
+
+def save_state(state):
+    os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
+    tmp = STATE_FILE + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(state, f)
+    os.replace(tmp, STATE_FILE)
+    if os.path.exists(LEGACY_STATE_FILE):
+        try:
+            os.remove(LEGACY_STATE_FILE)
+        except OSError:
+            pass
+
+
 def main():
     configured_layouts = get_configured_layouts()
     num_layouts = len(configured_layouts)
@@ -170,6 +188,16 @@ def main():
         # Nothing to switch between if there is only 1 layout
         return
 
+    os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
+    with open(LOCK_FILE, "w") as lock_file:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+        try:
+            toggle(configured_layouts, num_layouts)
+        finally:
+            fcntl.flock(lock_file, fcntl.LOCK_UN)
+
+
+def toggle(configured_layouts, num_layouts):
     devices = get_hyprland_devices()
     current_idx, _ = get_active_keyboard_info(devices, num_layouts)
     now_ms = int(time.time() * 1000)
@@ -180,21 +208,17 @@ def main():
     origin = current_idx
     last_ts = 0
 
-    if os.path.exists(STATE_FILE):
-        try:
-            with open(STATE_FILE, "r") as f:
-                saved = json.load(f)
-                saved_mru = saved.get("mru", [])
-                if (
-                    len(saved_mru) == 2
-                    and saved_mru[0] != saved_mru[1]
-                    and all(isinstance(x, int) and 0 <= x < num_layouts for x in saved_mru)
-                ):
-                    mru = saved_mru
-                origin = saved.get("origin", mru[0])
-                last_ts = saved.get("last_ts", 0)
-        except Exception:
-            pass
+    saved = load_state()
+    if saved:
+        saved_mru = saved.get("mru", [])
+        if (
+            len(saved_mru) == 2
+            and saved_mru[0] != saved_mru[1]
+            and all(isinstance(x, int) and 0 <= x < num_layouts for x in saved_mru)
+        ):
+            mru = saved_mru
+        origin = saved.get("origin", mru[0])
+        last_ts = saved.get("last_ts", 0)
 
     # Resync MRU if active layout was changed externally
     if mru[0] != current_idx:
@@ -224,27 +248,18 @@ def main():
 
     target = mru[0]
 
-    # Save state
-    new_state = {
+    save_state({
         "mru": mru,
         "origin": origin,
         "last_ts": now_ms,
-    }
-    try:
-        os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
-        with open(STATE_FILE, "w") as f:
-            json.dump(new_state, f)
-    except Exception:
-        pass
+    })
 
-    # Switch all keyboards
-    apply_layout_to_all(devices, target)
+    # Switch typing keyboards
+    apply_layout_to_typed(devices, target)
 
     # Show macOS switcher HUD only when cycling through layouts (3+ layouts), never on normal toggle
     if num_layouts > 2 and is_cycling:
-        updated_devices = get_hyprland_devices()
-        _, updated_keymap = get_active_keyboard_info(updated_devices, num_layouts)
-        show_switcher_hud(target, configured_layouts, updated_keymap)
+        show_switcher_hud(target, configured_layouts)
 
 
 if __name__ == "__main__":

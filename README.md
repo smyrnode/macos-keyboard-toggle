@@ -10,7 +10,7 @@ In standard Linux/Hyprland setups, keyboard layout switching with multiple langu
 
 This plugin brings the intuitive **macOS input switching behavior** to Omarchy:
 - **Quick tap (`Ctrl + Space`):** Always toggles between the **last two used layouts** (e.g., English ⇄ Russian), no matter how much time has passed between typing sessions.
-- **Rapid press / hold (within 1 second):** Cycles through **all remaining system layouts** (e.g., English → Russian → Greek → English...). Once you stop on a layout and begin typing, it is pinned as active and pairs with the previous layout.
+- **Rapid presses (within 1 second):** Cycles through **all remaining system layouts** (e.g., English → Russian → Greek → English...). Once you stop on a layout and begin typing, it is pinned as active and pairs with the previous layout.
 
 ![Plugin Demo](preview.png)
 
@@ -27,7 +27,7 @@ This plugin brings the intuitive **macOS input switching behavior** to Omarchy:
   - Left-clicking the widget triggers the macOS-style layout switch.
   - Tooltip shows the full layout description.
 - **macOS-style Switcher HUD with Animated Cursor:**
-  - When cycling through 3+ languages (rapid presses / hold), a centered floating card HUD appears displaying square tiles for all configured languages.
+  - When cycling through 3+ languages (rapid presses), a centered floating card HUD appears displaying square tiles for all configured languages.
   - A highlighted selection cursor smoothly slides between the language tiles as you cycle (`US` → `RU` → `GR`...).
   - Fast single-tap toggling between the last two layouts remains completely silent without showing any popup.
 - **Fully Dynamic (Zero Hardcoding):**
@@ -56,7 +56,7 @@ For development, clone the repository into `~/.config/omarchy/plugins/smyrnode.m
 The installer automatically adds the following shortcut to `~/.config/hypr/bindings.lua`:
 
 ```lua
--- macOS-style language toggle: quick tap toggles last 2, hold/repeat cycles all
+-- macOS-style language toggle: quick tap toggles last 2, rapid taps cycle all
 o.bind("CTRL + SPACE", "Toggle language (macOS-style)", "~/.local/bin/omarchy-lang-toggle")
 ```
 

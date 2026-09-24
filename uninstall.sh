@@ -16,7 +16,16 @@ if [[ -f "$BINDINGS_FILE" ]]; then
   sed -i '/macOS-style language toggle/d' "$BINDINGS_FILE"
 fi
 
-# 3. Reload
+# 3. Remove symlink and state files
+if [[ -L "${HOME}/.local/bin/omarchy-lang-toggle" ]]; then
+  rm -f "${HOME}/.local/bin/omarchy-lang-toggle"
+fi
+rm -f "${HOME}/.local/state/omarchy-lang-toggle.json" \
+      "${HOME}/.local/state/omarchy-lang-toggle.json.lock" \
+      "${HOME}/.local/state/omarchy-lang-toggle.json.tmp" \
+      "${HOME}/.cache/omarchy-lang-toggle.json"
+
+# 4. Reload
 hyprctl reload >/dev/null 2>&1 || true
 
 echo "==> Uninstalled successfully."

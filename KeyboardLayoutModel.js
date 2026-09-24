@@ -42,7 +42,7 @@ function eventKeyboardName(event) {
   return name.indexOf("hl-virtual-keyboard") === 0 ? "" : name
 }
 
-var UNTYPED_KEYBOARDS = /^(hl-virtual-keyboard|power-button|sleep-button|lid-switch|video-bus)/
+var UNTYPED_KEYBOARDS = /(consumer|system|avrcp|fcitx|hl-virtual-keyboard|power-button|sleep-button|lid-switch|video-bus)/
 
 function isTypedKeyboard(name) {
   return !UNTYPED_KEYBOARDS.test(String(name || ""))

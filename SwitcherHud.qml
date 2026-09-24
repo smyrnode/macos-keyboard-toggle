@@ -13,7 +13,7 @@ PanelWindow {
   property int activeIndex: 0
   property int duration: 1200
 
-  visible: opened
+  visible: opened || closeTimer.running
   anchors { top: true; bottom: true; left: true; right: true }
   color: "transparent"
   WlrLayershell.namespace: "smyrnode.macos-keyboard-toggle-hud"
@@ -43,12 +43,19 @@ PanelWindow {
 
   function close() {
     hudWindow.opened = false
+    closeTimer.restart()
   }
 
   Timer {
     id: hideTimer
     interval: hudWindow.duration
-    onTriggered: hudWindow.opened = false
+    onTriggered: hudWindow.close()
+  }
+
+  // Keep the window alive past the fade-out animation
+  Timer {
+    id: closeTimer
+    interval: 200
   }
 
   // Centered Floating HUD Container

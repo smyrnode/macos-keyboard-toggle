@@ -52,8 +52,11 @@ BarWidget {
       "sh", "-c",
       "mkdir -p ~/.local/bin && " +
       "SCRIPT=" + String(Qt.resolvedUrl("bin/omarchy-lang-toggle")).replace(/^file:\/\//, "") + " && " +
+      "NEW_SETUP=1 && " +
+      "{ [ -e ~/.local/bin/omarchy-lang-toggle ] || [ -L ~/.local/bin/omarchy-lang-toggle ]; } && NEW_SETUP=; " +
+      "grep -q 'omarchy-lang-toggle' ~/.config/hypr/bindings.lua 2>/dev/null && NEW_SETUP=; " +
       "ln -sf \"$SCRIPT\" ~/.local/bin/omarchy-lang-toggle && " +
-      "if [ -f ~/.config/hypr/bindings.lua ] && ! grep -q 'omarchy-lang-toggle' ~/.config/hypr/bindings.lua; then " +
+      "if [ -n \"$NEW_SETUP\" ] && [ -f ~/.config/hypr/bindings.lua ]; then " +
       "printf '\\n-- macOS-style language toggle\\no.bind(\"CTRL + SPACE\", \"Toggle language (macOS-style)\", \"~/.local/bin/omarchy-lang-toggle\")\\n' >> ~/.config/hypr/bindings.lua && " +
       "hyprctl reload; fi"
     ]
