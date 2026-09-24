@@ -209,6 +209,18 @@ switch_all() {
   done < <(typed_keyboard_names || true)
 }
 
+# A keymap swap right before switching can make switchxkblayout land on the
+# outgoing map, so retry until the seat reports the requested index.
+switch_all_reliable() {
+  local index=$1 attempt
+  for attempt in 1 2 3 4 5 6 7 8; do
+    switch_all "$index"
+    [[ $(active_index) == "$index" ]] && return 0
+    sleep 0.05
+  done
+  return 0
+}
+
 switch_all_keyboards_checked() {
   local index=$1 keyboard
   local -a keyboards=()
@@ -345,7 +357,7 @@ commit_candidate() {
       rm -f -- "$temp_state" "$temp_toggle" "$old_state" "$old_toggle"
       die 'Hyprland rejected the keyboard configuration; the previous settings were restored without reloading the session.'
     fi
-    switch_all "$requested_index"
+    switch_all_reliable "$requested_index"
     restore_reload_guard
     trap - EXIT HUP INT TERM
   fi
@@ -399,7 +411,7 @@ case "$action" in
     ensure_state
     count=$(jq '.layouts | length' "$state_file")
     (( index < count )) || die 'That keyboard language is no longer available.'
-    switch_all "$index"
+    switch_all_reliable "$index"
     status_json
     ;;
   add)
