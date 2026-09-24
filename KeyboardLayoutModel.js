@@ -232,6 +232,23 @@ function canDelete(layouts, index) {
   return { ok: true, reason: "" }
 }
 
+function canMove(layouts, index, step) {
+  var normalized = normalizeLayouts(layouts)
+  var count = normalized.length
+  if (index < 0 || index >= count) return { ok: false, reason: "That keyboard language is no longer available." }
+  var target = index + step
+  if (target < 0) return { ok: false, reason: "Already first." }
+  if (target >= count) return { ok: false, reason: "Already last." }
+  var next = normalized.slice()
+  var tmp = next[index]
+  next[index] = next[target]
+  next[target] = tmp
+  if (next[0].latin !== true) {
+    return { ok: false, reason: "Keep a Latin layout first so SUPER+letter shortcuts continue to work." }
+  }
+  return { ok: true, reason: "" }
+}
+
 function eventKeyboardName(event) {
   var parts
   try {
@@ -261,6 +278,7 @@ if (typeof module !== "undefined") module.exports = {
   aliasError: aliasError,
   baseLayoutOptions: baseLayoutOptions,
   canDelete: canDelete,
+  canMove: canMove,
   descriptionFor: descriptionFor,
   duplicate: duplicate,
   eventKeyboardName: eventKeyboardName,

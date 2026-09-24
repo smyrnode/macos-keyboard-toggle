@@ -28,7 +28,13 @@ case "${1:-}" in
         case "${3:-}" in
           input:kb_layout) printf '%s\n' '{"str":"us,ru"}' ;;
           input:kb_variant) printf '%s\n' '{"str":""}' ;;
-          input:kb_options) printf '%s\n' '{"str":"compose:caps"}' ;;
+          input:kb_options)
+            if [[ -n ${STUB_KB_OPTIONS:-} ]]; then
+              printf '{"str":"%s"}\n' "$STUB_KB_OPTIONS"
+            else
+              printf '%s\n' '{"str":"compose:caps"}'
+            fi
+            ;;
           misc:disable_autoreload) printf '%s\n' '{"bool":false}' ;;
           *) printf '%s\n' '{"str":""}' ;;
         esac ;;
@@ -107,5 +113,38 @@ pass "xkb mode uses chosen shortcut"
 # 11. invalid shortcut is refused
 if "$HELPER" shortcut grp:bogus_option >/dev/null 2>&1; then fail "bogus shortcut should fail"; fi
 pass "invalid shortcut refused"
+
+# 12. status reports the live XKB group option (for conflict detection)
+out=$("$HELPER" status) || fail "status should succeed"
+jq -e '.groupOption == ""' <<<"$out" >/dev/null || fail "groupOption should be empty without a grp option"
+out=$(STUB_KB_OPTIONS="compose:caps,grp:ctrl_space_toggle" "$HELPER" status) || fail "status should succeed"
+jq -e '.groupOption == "grp:ctrl_space_toggle"' <<<"$out" >/dev/null || fail "groupOption should report the live grp option"
+pass "groupOption reported"
+
+# 13. move swaps neighbors
+"$HELPER" add gb >/dev/null || fail "add gb should succeed"
+out=$("$HELPER" move 0 down) || fail "move down should succeed"
+jq -e '.layouts[0].layout == "fr" and .layouts[1].layout == "us" and .layouts[2].layout == "gb"' <<<"$out" >/dev/null || fail "us should swap with fr"
+out=$("$HELPER" move 1 up) || fail "move up should succeed"
+jq -e '.layouts[0].layout == "us" and .layouts[1].layout == "fr"' <<<"$out" >/dev/null || fail "us should move back to front"
+pass "move up/down swaps"
+
+# 14. move at the edges is refused
+if "$HELPER" move 0 up >/dev/null 2>&1; then fail "move 0 up should fail"; fi
+if "$HELPER" move 2 down >/dev/null 2>&1; then fail "move last down should fail"; fi
+pass "move edges refused"
+
+# 15. move cannot put a non-Latin layout first
+"$HELPER" add ru >/dev/null || fail "add ru should succeed"  # [us, fr, gb, ru]
+"$HELPER" move 3 up >/dev/null || fail "move 3 up should succeed"  # [us, fr, ru, gb]
+"$HELPER" move 2 up >/dev/null || fail "move 2 up should succeed"  # [us, ru, fr, gb]
+if "$HELPER" move 1 up >/dev/null 2>&1; then fail "non-latin-first move should fail"; fi
+pass "move latin-first guard"
+
+# 16. reapply forces a live apply even when nothing changed
+: >"$STUB_LOG"
+"$HELPER" reapply >/dev/null || fail "reapply should succeed"
+grep -q 'eval' "$STUB_LOG" || fail "reapply must hit hyprctl eval"
+pass "reapply forces apply"
 
 echo "ALL TESTS PASSED"

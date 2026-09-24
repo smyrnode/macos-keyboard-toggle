@@ -11,7 +11,7 @@ On most Linux desktops the layout hotkey walks through every language in a fixed
 This plugin makes switching behave like macOS and GNOME:
 
 - **Quick tap `Ctrl + Space`** — jump between the **two languages you used last**, no matter how long ago that was.
-- **Rapid taps (within 1 second)** — walk through **all** languages. With 3+ languages configured, a HUD card shows which one is selected.
+- **Rapid taps (within 1 second)** — walk through **all** languages. With 3+ languages configured, a HUD card shows which one is selected (custom bar labels are reused as HUD names).
 - **Left-click the bar label** — same switch, no hotkey needed.
 - **Scroll on the bar label** — walk through all languages, one notch at a time.
 - **Right-click the bar label** — open the **language manager**.
@@ -23,8 +23,10 @@ Right-click the language label in the bar to:
 - see all configured languages and switch between them;
 - **add** languages and variants from the installed XKB catalog (searchable list);
 - **remove** languages (with confirmation — a Latin layout must stay first so `SUPER` + letter shortcuts keep working);
+- **reorder** languages with the ↑/↓ buttons (the active language stays put);
 - turn **macOS-style switching** on or off;
-- pick the **XKB switching shortcut** used when macOS-style switching is off.
+- pick the **XKB switching shortcut** used when macOS-style switching is off;
+- fix conflicts if a stray XKB `grp:` shortcut is live while macOS-style switching is on (that would switch twice on one press).
 
 Changes are validated with `xkbcli`, applied live through Hyprland IPC, and rolled back automatically if the compositor rejects them — no session reload.
 
@@ -73,8 +75,10 @@ smyrnode.macos-keyboard-toggle/
 │   ├── omarchy-lang-toggle    # MRU switching engine with IPC HUD support
 │   └── macos-keyboard-layout  # Layout/state manager with safe apply + rollback
 ├── tests/
+│   ├── model.test.mjs         # Model unit tests (node tests/model.test.mjs)
 │   ├── smoke.sh               # Helper tests against a stubbed hyprctl
 │   └── uninstall-smoke.sh     # Uninstall cleanup test
+├── .github/workflows/ci.yml   # Runs all tests on push and PRs
 ├── install.sh                 # One-step installation script
 ├── uninstall.sh               # Complete uninstallation script
 ├── README.md                  # Documentation

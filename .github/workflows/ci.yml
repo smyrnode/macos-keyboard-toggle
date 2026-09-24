@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install xkb tools
+        run: sudo apt-get update && sudo apt-get install -y jq libxkbcommon-tools xkb-data
+
+      - name: Model tests
+        run: node tests/model.test.mjs
+
+      - name: Helper smoke tests
+        run: ./tests/smoke.sh
+
+      - name: Uninstall smoke tests
+        run: ./tests/uninstall-smoke.sh

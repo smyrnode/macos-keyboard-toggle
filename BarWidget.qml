@@ -63,6 +63,11 @@ Panel {
   }
   readonly property string switchMode: String(managedState.switchMode || "mru")
   readonly property string switchOption: String(managedState.switchOption || "grp:ctrl_space_toggle")
+  readonly property string conflictOption: {
+    if (switchMode !== "mru") return ""
+    var live = String(managedState.groupOption || "")
+    return live !== "" ? live : ""
+  }
   readonly property string layoutLabel: {
     var item = configuredLayouts[Math.max(0, Math.min(activeLayoutIndex, configuredLayouts.length - 1))]
     return item ? Model.labelFor(catalog, item.layout, item.variant, item.alias) : "KB"
@@ -196,6 +201,17 @@ Panel {
   function switchLayout(index) {
     if (!stateReady || index < 0 || index >= configuredLayouts.length) return
     runAction(["set", String(index)], "Keyboard language switched.")
+  }
+
+  function moveLanguage(index, step) {
+    if (!stateReady) return
+    var verdict = Model.canMove(configuredLayouts, index, step)
+    if (!verdict.ok) {
+      statusError = true
+      statusText = verdict.reason
+      return
+    }
+    runAction(["move", String(index), step < 0 ? "up" : "down"], "Language order updated.")
   }
 
   function requestDelete(index) {
@@ -589,6 +605,33 @@ Panel {
             width: parent.width
             spacing: Style.space(6)
 
+            Column {
+              visible: root.conflictOption !== ""
+              width: parent.width
+              spacing: Style.space(6)
+
+              Text {
+                width: parent.width
+                text: "XKB shortcut " + root.conflictOption + " is also live in the keymap — one press would switch languages twice."
+                color: Color.urgent
+                font.family: Style.font.family
+                font.pixelSize: Style.font.caption
+                wrapMode: Text.WordWrap
+              }
+
+              Button {
+                text: applyProc.running ? "Fixing…" : "Remove XKB conflict"
+                leftAlign: true
+                focusable: true
+                bordered: true
+                enabled: root.stateReady && !applyProc.running
+                foreground: Color.foreground
+                accent: Color.accent
+                fontFamily: Style.font.family
+                onClicked: root.runAction(["reapply"], "XKB shortcut removed from the keymap.")
+              }
+            }
+
             PanelSectionHeader {
               text: "Available languages"
               foreground: Color.foreground
@@ -651,7 +694,7 @@ Panel {
                   }
 
                   Column {
-                    width: Math.max(0, parent.width - aliasBadge.width - deleteButton.width - parent.spacing * 2)
+                    width: Math.max(0, parent.width - aliasBadge.width - moveUpButton.width - moveDownButton.width - deleteButton.width - parent.spacing * 4)
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: Style.space(1)
 
@@ -673,6 +716,34 @@ Panel {
                       font.pixelSize: Style.font.caption
                       elide: Text.ElideRight
                     }
+                  }
+
+                  PanelActionButton {
+                    id: moveUpButton
+
+                    readonly property var moveVerdict: Model.canMove(root.configuredLayouts, index, -1)
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    iconText: "↑"
+                    tooltipText: moveVerdict.ok ? "Move up" : moveVerdict.reason
+                    foreground: Color.foreground
+                    fontFamily: Style.font.family
+                    enabled: root.stateReady && moveVerdict.ok && !applyProc.running
+                    onClicked: root.moveLanguage(index, -1)
+                  }
+
+                  PanelActionButton {
+                    id: moveDownButton
+
+                    readonly property var moveVerdict: Model.canMove(root.configuredLayouts, index, 1)
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    iconText: "↓"
+                    tooltipText: moveVerdict.ok ? "Move down" : moveVerdict.reason
+                    foreground: Color.foreground
+                    fontFamily: Style.font.family
+                    enabled: root.stateReady && moveVerdict.ok && !applyProc.running
+                    onClicked: root.moveLanguage(index, 1)
                   }
 
                   PanelActionButton {

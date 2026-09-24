@@ -21,13 +21,17 @@ SETTINGS_FILE = os.path.expanduser(
 CYCLE_TIMEOUT_MS = 1000  # 1 second window to continue cycling
 
 
-def mru_enabled():
-    """True when the macOS-style switcher owns the hotkey (vs plain XKB)."""
+def load_settings():
     try:
         with open(SETTINGS_FILE, "r") as f:
-            return json.load(f).get("switchMode", "mru") == "mru"
+            return json.load(f)
     except Exception:
-        return True
+        return {}
+
+
+def mru_enabled():
+    """True when the macOS-style switcher owns the hotkey (vs plain XKB)."""
+    return load_settings().get("switchMode", "mru") == "mru"
 
 
 def get_configured_layouts():
@@ -132,10 +136,19 @@ COMMON_NAMES = {
 }
 
 
-def show_switcher_hud(target_idx, configured_layouts):
-    """Show macOS-style card switcher HUD via Omarchy Shell IPC."""
-    names = [COMMON_NAMES.get(code.lower().strip(), code.upper()) for code in configured_layouts]
+def hud_names(configured_layouts, layouts_meta):
+    """Bar aliases from settings win over the built-in language names."""
+    names = []
+    for idx, code in enumerate(configured_layouts):
+        alias = ""
+        if idx < len(layouts_meta):
+            alias = str((layouts_meta[idx] or {}).get("alias") or "")
+        names.append(alias or COMMON_NAMES.get(code.lower().strip(), code.upper()))
+    return names
 
+
+def show_switcher_hud(target_idx, configured_layouts, names):
+    """Show macOS-style card switcher HUD via Omarchy Shell IPC."""
     payload = json.dumps({
         "activeIndex": target_idx,
         "layouts": [c.upper() for c in configured_layouts],
@@ -193,7 +206,8 @@ def save_state(state):
 
 
 def main():
-    if not mru_enabled():
+    settings = load_settings()
+    if settings.get("switchMode", "mru") != "mru":
         # XKB owns the hotkey in this mode; never switch twice.
         return
 
@@ -208,12 +222,12 @@ def main():
     with open(LOCK_FILE, "w") as lock_file:
         fcntl.flock(lock_file, fcntl.LOCK_EX)
         try:
-            toggle(configured_layouts, num_layouts)
+            toggle(configured_layouts, num_layouts, settings)
         finally:
             fcntl.flock(lock_file, fcntl.LOCK_UN)
 
 
-def toggle(configured_layouts, num_layouts):
+def toggle(configured_layouts, num_layouts, settings):
     devices = get_hyprland_devices()
     current_idx, _ = get_active_keyboard_info(devices, num_layouts)
     now_ms = int(time.time() * 1000)
@@ -275,7 +289,9 @@ def toggle(configured_layouts, num_layouts):
 
     # Show macOS switcher HUD only when cycling through layouts (3+ layouts), never on normal toggle
     if num_layouts > 2 and is_cycling:
-        show_switcher_hud(target, configured_layouts)
+        meta = settings.get("layouts")
+        meta = meta if isinstance(meta, list) else []
+        show_switcher_hud(target, configured_layouts, hud_names(configured_layouts, meta))
 
 
 if __name__ == "__main__":
