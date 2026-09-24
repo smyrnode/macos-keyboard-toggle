@@ -107,6 +107,17 @@ group switches — the indicator would move while text kept coming out in the ol
 language. The plugin therefore syncs the matching `keyboard-<layout>` input
 method on every switch so typing follows the indicator.
 
+fcitx5 also flashes its own **Input Method Information** popup near the cursor
+on every switch. The bar and the HUD already show the active layout, so most
+people turn that popup off in `~/.config/fcitx5/config`:
+
+```ini
+[Behavior]
+ShowInputMethodInformation=False
+showInputMethodInformationWhenFocusIn=False
+ShowFirstInputMethodInformation=False
+```
+
 ## Uninstallation
 
 ```bash
