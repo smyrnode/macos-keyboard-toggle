@@ -97,8 +97,13 @@ Panel {
 
   function toggleLayout() {
     if (!root.bar) return
-    var scriptPath = String(Qt.resolvedUrl("bin/omarchy-lang-toggle")).replace(/^file:\/\//, "")
-    root.bar.run(scriptPath)
+    if (root.switchMode === "mru") {
+      var scriptPath = String(Qt.resolvedUrl("bin/omarchy-lang-toggle")).replace(/^file:\/\//, "")
+      root.bar.run(scriptPath)
+    } else {
+      // XKB mode: sequential cycle, like the stock widget.
+      root.switchLayout((activeLayoutIndex + 1) % Math.max(1, configuredLayouts.length))
+    }
     refreshTimer.restart()
   }
 
