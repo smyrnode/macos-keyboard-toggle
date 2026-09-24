@@ -15,7 +15,19 @@ import time
 STATE_FILE = os.path.expanduser("~/.local/state/omarchy-lang-toggle.json")
 LEGACY_STATE_FILE = os.path.expanduser("~/.cache/omarchy-lang-toggle.json")
 LOCK_FILE = STATE_FILE + ".lock"
+SETTINGS_FILE = os.path.expanduser(
+    "~/.local/state/omarchy/settings/smyrnode-macos-keyboard-toggle.json"
+)
 CYCLE_TIMEOUT_MS = 1000  # 1 second window to continue cycling
+
+
+def mru_enabled():
+    """True when the macOS-style switcher owns the hotkey (vs plain XKB)."""
+    try:
+        with open(SETTINGS_FILE, "r") as f:
+            return json.load(f).get("switchMode", "mru") == "mru"
+    except Exception:
+        return True
 
 
 def get_configured_layouts():
@@ -181,6 +193,10 @@ def save_state(state):
 
 
 def main():
+    if not mru_enabled():
+        # XKB owns the hotkey in this mode; never switch twice.
+        return
+
     configured_layouts = get_configured_layouts()
     num_layouts = len(configured_layouts)
 

@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "id": "smyrnode.macos-keyboard-toggle",
   "name": "macOS Keyboard Toggle",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Dmitry Smyrnov",
-  "description": "macOS-style input language switcher (MRU toggle & hold/rapid cycle) with status bar indicator and OSD for Omarchy",
+  "description": "macOS-style input language switcher (MRU toggle & rapid-cycle) with a right-click language manager panel for Omarchy",
   "kinds": [
     "bar-widget"
   ],
@@ -13,7 +13,7 @@
   },
   "barWidget": {
     "displayName": "Keyboard (macOS)",
-    "description": "Language indicator next to clock with macOS-style switching",
+    "description": "Language indicator next to clock with macOS-style switching; right-click to manage languages",
     "category": "Input",
     "allowMultiple": false,
     "defaultSection": "center"
