@@ -107,14 +107,19 @@ Panel {
     refreshTimer.restart()
   }
 
-  function cycleByWheel(delta) {
-    if (!root.bar || delta === 0) return
+  function stepLayout(step) {
+    if (!root.bar) return
     var count = Math.max(1, configuredLayouts.length)
     if (count < 2) return
-    var next = (activeLayoutIndex + (delta > 0 ? -1 : 1) + count) % count
+    var next = (activeLayoutIndex + step + count) % count
     activeLayoutIndex = next
     root.bar.run(Util.shellQuote(root.helperCommand) + " set " + next)
     refreshTimer.restart()
+  }
+
+  function cycleByWheel(delta) {
+    if (delta === 0) return
+    stepLayout(delta > 0 ? -1 : 1)
   }
 
   function refresh() {
@@ -439,6 +444,14 @@ Panel {
     }
     function togglePanel(): string {
       root.toggle()
+      return "ok"
+    }
+    function cycleNext(): string {
+      root.stepLayout(1)
+      return "ok"
+    }
+    function cyclePrev(): string {
+      root.stepLayout(-1)
       return "ok"
     }
   }
