@@ -13,6 +13,7 @@ This plugin makes switching behave like macOS and GNOME:
 - **Quick tap `Ctrl + Space`** — jump between the **two languages you used last**, no matter how long ago that was.
 - **Rapid taps (within 1 second)** — walk through **all** languages. With 3+ languages configured, a HUD card shows which one is selected.
 - **Left-click the bar label** — same switch, no hotkey needed.
+- **Scroll on the bar label** — walk through all languages, one notch at a time.
 - **Right-click the bar label** — open the **language manager**.
 
 ## Language manager

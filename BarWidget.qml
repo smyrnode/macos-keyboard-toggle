@@ -107,6 +107,16 @@ Panel {
     refreshTimer.restart()
   }
 
+  function cycleByWheel(delta) {
+    if (!root.bar || delta === 0) return
+    var count = Math.max(1, configuredLayouts.length)
+    if (count < 2) return
+    var next = (activeLayoutIndex + (delta > 0 ? -1 : 1) + count) % count
+    activeLayoutIndex = next
+    root.bar.run(Util.shellQuote(root.helperCommand) + " set " + next)
+    refreshTimer.restart()
+  }
+
   function refresh() {
     if (queryProc.running) {
       refreshPending = true
@@ -471,10 +481,13 @@ Panel {
     text: root.layoutLabel
     fontSize: Style.font.caption
     horizontalMargin: 6
-    tooltipText: root.activeDescription + "\nLeft-click: switch language\nRight-click: manage languages"
+    tooltipText: root.activeDescription + "\nLeft-click: switch language\nScroll: cycle languages\nRight-click: manage languages"
     onPressed: function(mouseButton) {
       if (mouseButton === Qt.RightButton) root.toggle()
       else root.toggleLayout()
+    }
+    onWheelMoved: function(delta) {
+      root.cycleByWheel(delta)
     }
   }
 
