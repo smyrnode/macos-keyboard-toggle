@@ -99,6 +99,14 @@ The JSON document is the source of truth; the Lua file is generated for
 Omarchy's user-toggle loader and applies `kb_layout`/`kb_variant`/`kb_options`
 on top of `~/.config/hypr/input.lua`.
 
+### fcitx5
+
+If fcitx5 runs `keyboard-*` input methods (`keyboard-us`, `keyboard-ru`, …),
+its virtual keyboard becomes the seat's main keyboard and typing ignores XKB
+group switches — the indicator would move while text kept coming out in the old
+language. The plugin therefore syncs the matching `keyboard-<layout>` input
+method on every switch so typing follows the indicator.
+
 ## Uninstallation
 
 ```bash

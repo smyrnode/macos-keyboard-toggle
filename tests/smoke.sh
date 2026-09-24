@@ -46,6 +46,13 @@ exit 0
 EOF
 chmod +x "$WORK/bin/hyprctl"
 
+cat >"$WORK/bin/fcitx5-remote" <<'EOF'
+#!/usr/bin/env bash
+printf 'fcitx %s\n' "$*" >>"${STUB_LOG:-/dev/null}"
+exit 0
+EOF
+chmod +x "$WORK/bin/fcitx5-remote"
+
 fail() { echo "FAIL: $1" >&2; exit 1; }
 pass() { echo "ok: $1"; }
 
@@ -166,5 +173,11 @@ cp "$BINDINGS" "$WORK/bindings.once"
 SMYRNODE_KB_BINDINGS_FILE="$BINDINGS" "$HELPER" hotkey "SUPER + SHIFT + S" >/dev/null || fail "repeat hotkey should succeed"
 cmp -s "$WORK/bindings.once" "$BINDINGS" || fail "hotkey rewrite must be idempotent"
 pass "hotkey rewrites binding"
+
+# 18. switching syncs the fcitx5 input method so typing follows
+: >"$STUB_LOG"
+"$HELPER" set 1 >/dev/null || fail "set should succeed"
+grep -q 'fcitx -s keyboard-ru' "$STUB_LOG" || fail "switching must sync the fcitx5 input method"
+pass "fcitx5 input method synced"
 
 echo "ALL TESTS PASSED"

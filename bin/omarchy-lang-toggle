@@ -94,7 +94,20 @@ def get_active_keyboard_info(devices, num_layouts):
     return idx, keymap
 
 
-def apply_layout_to_typed(devices, target_idx):
+def sync_fcitx(layout_code):
+    """fcitx5 keyboard-* input methods map keysyms themselves, so typing would
+    ignore XKB group switches. Keep its input method in step with the layout."""
+    try:
+        subprocess.run(
+            ["fcitx5-remote", "-s", "keyboard-" + layout_code],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except Exception:
+        pass
+
+
+def apply_layout_to_typed(devices, target_idx, configured_layouts):
     """Switch layout on typing keyboards only (skip buttons, consumer/system controls)."""
     keyboards = devices.get("keyboards", [])
     target_str = str(target_idx)
@@ -106,6 +119,8 @@ def apply_layout_to_typed(devices, target_idx):
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
+    if 0 <= target_idx < len(configured_layouts):
+        sync_fcitx(configured_layouts[target_idx])
 
 
 COMMON_NAMES = {
@@ -285,7 +300,7 @@ def toggle(configured_layouts, num_layouts, settings):
     })
 
     # Switch typing keyboards
-    apply_layout_to_typed(devices, target)
+    apply_layout_to_typed(devices, target, configured_layouts)
 
     # Show macOS switcher HUD only when cycling through layouts (3+ layouts), never on normal toggle
     if num_layouts > 2 and is_cycling:
