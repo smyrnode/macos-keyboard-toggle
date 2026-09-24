@@ -36,7 +36,6 @@ Panel {
       "variant": "",
       "latin": true
     }],
-    "switchOption": "grp:ctrl_space_toggle",
     "nonGroupOptions": []
   })
   property var catalog: ({
@@ -46,7 +45,6 @@ Panel {
   property string view: "main"
   property string selectedLayout: ""
   property string selectedVariant: ""
-  property string selectedShortcut: ""
   property int pendingDeleteIndex: -1
   property int editingAliasIndex: -1
   property string selectedAlias: ""
@@ -65,17 +63,12 @@ Panel {
     }]
   }
   readonly property string switchMode: String(managedState.switchMode || "mru")
-  readonly property string switchOption: String(managedState.switchOption || "grp:ctrl_space_toggle")
-  readonly property string mruHotkey: String(managedState.hotkey || "CTRL + SPACE")
+  readonly property string switchHotkey: String(managedState.hotkey || "CTRL + SPACE")
   readonly property var editingAliasLayout: editingAliasIndex >= 0 && editingAliasIndex < configuredLayouts.length ? configuredLayouts[editingAliasIndex] : null
   readonly property string automaticAlias: editingAliasLayout ? Model.labelFor(catalog, editingAliasLayout.layout, editingAliasLayout.variant, "") : ""
   readonly property string aliasPreview: editingAliasLayout ? Model.labelFor(catalog, editingAliasLayout.layout, editingAliasLayout.variant, selectedAlias) : ""
   readonly property string aliasValidationError: Model.aliasError(selectedAlias)
-  readonly property string conflictOption: {
-    if (switchMode !== "mru") return ""
-    var live = String(managedState.groupOption || "")
-    return live !== "" ? live : ""
-  }
+  readonly property string conflictOption: String(managedState.groupOption || "")
   readonly property string layoutLabel: {
     var item = configuredLayouts[Math.max(0, Math.min(activeLayoutIndex, configuredLayouts.length - 1))]
     return item ? Model.labelFor(catalog, item.layout, item.variant, item.alias) : "KB"
@@ -93,13 +86,6 @@ Panel {
   readonly property var heroPhrases: Model.heroPhrases()
   readonly property string heroPhrase: heroPhrases.length > 0 ? heroPhrases[phraseIndex % heroPhrases.length] : ""
 
-  function shortcutLabel(value) {
-    var found = catalog.shortcuts.find(function(item) {
-      return item.value === value
-    })
-    return found ? found.label : value
-  }
-
   function typedKeyboards(keyboards) {
     return keyboards.filter(k => Model.isTypedKeyboard(k.name))
   }
@@ -110,13 +96,8 @@ Panel {
 
   function toggleLayout() {
     if (!root.bar) return
-    if (root.switchMode === "mru") {
-      var scriptPath = String(Qt.resolvedUrl("bin/omarchy-lang-toggle")).replace(/^file:\/\//, "")
-      root.bar.run(scriptPath)
-    } else {
-      // XKB mode: sequential cycle, like the stock widget.
-      root.switchLayout((activeLayoutIndex + 1) % Math.max(1, configuredLayouts.length))
-    }
+    var scriptPath = String(Qt.resolvedUrl("bin/omarchy-lang-toggle")).replace(/^file:\/\//, "")
+    root.bar.run(scriptPath)
     refreshTimer.restart()
   }
 
@@ -166,17 +147,8 @@ Panel {
     resetAddEditor()
     resetAliasEditor()
     pendingHotkey = ""
-    selectedShortcut = switchOption
     statusText = ""
-    cursorIndex = Math.max(0, Math.min(cursorIndex, configuredLayouts.length + 1))
-  }
-
-  function startShortcut() {
-    view = "shortcut"
-    selectedShortcut = switchOption
-    shortcutPicker.resetSearch()
-    shortcutPicker.setCurrentValue(selectedShortcut)
-    statusText = ""
+    cursorIndex = Math.max(0, Math.min(cursorIndex, configuredLayouts.length))
   }
 
   function startAdd() {
@@ -346,29 +318,19 @@ Panel {
     runAction(["add", selectedLayout, selectedVariant], "Keyboard language added.", "Checking keyboard compatibility…")
   }
 
-  function saveShortcut() {
-    if (!selectedShortcut) {
-      statusError = true
-      statusText = "Choose a supported switching shortcut."
-      return
-    }
-    runAction(["shortcut", selectedShortcut], "Switching shortcut updated.")
-  }
-
   function toggleSwitchMode() {
-    runAction(["mode", switchMode === "mru" ? "xkb" : "mru"], switchMode === "mru" ? "XKB switching enabled." : "macOS-style switching enabled.")
+    runAction(["mode", switchMode === "mru" ? "xkb" : "mru"], switchMode === "mru" ? "Sequential cycling enabled." : "macOS-style switching enabled.")
   }
 
   function activateCursor() {
     if (view !== "main") return
     if (cursorIndex < configuredLayouts.length) switchLayout(cursorIndex)
-    else if (cursorIndex === configuredLayouts.length) startShortcut()
     else startAdd()
   }
 
   function moveCursor(dy) {
     if (view !== "main" || dy === 0) return
-    cursorIndex = Math.max(0, Math.min(configuredLayouts.length + 1, cursorIndex + dy))
+    cursorIndex = Math.max(0, Math.min(configuredLayouts.length, cursorIndex + dy))
   }
 
   Component.onCompleted: {
@@ -583,10 +545,6 @@ Panel {
       root.open()
       Qt.callLater(root.startAdd)
     }
-    function showShortcut(): void {
-      root.open()
-      Qt.callLater(root.startShortcut)
-    }
     function showHotkey(): void {
       root.open()
       Qt.callLater(root.startHotkey)
@@ -664,7 +622,7 @@ Panel {
       id: keyCatcher
 
       anchors.fill: parent
-      blocked: languagePicker.popupOpen || variantPicker.popupOpen || shortcutPicker.popupOpen || aliasField.activeFocus || root.view === "hotkey"
+      blocked: languagePicker.popupOpen || variantPicker.popupOpen || aliasField.activeFocus || root.view === "hotkey"
       onMoveRequested: function(dx, dy) {
         if (deleteDialog.opened) {
           if (dx !== 0 || dy !== 0) deleteDialog.selectedIndex = deleteDialog.selectedIndex === 0 ? 1 : 0
@@ -712,13 +670,13 @@ Panel {
             width: parent.width
             foreground: Color.foreground
             fontFamily: Style.font.family
-            title: root.view === "main" ? root.activeDescription : (root.view === "shortcut" ? "Switch shortcut" : (root.view === "alias" ? "Edit bar alias" : (root.view === "hotkey" ? "macOS-style hotkey" : "Add a language")))
-            meta: root.view === "main" ? root.heroPhrase : (root.view === "shortcut" ? "XKB-supported shortcuts" : (root.view === "alias" && root.editingAliasLayout ? Model.descriptionFor(root.catalog, root.editingAliasLayout.layout, root.editingAliasLayout.variant) : (root.view === "hotkey" ? "Key combination to capture" : "Installed XKB layouts")))
-            detail: root.view === "main" ? root.layoutLabel : (root.view === "alias" ? root.aliasPreview : (root.view === "hotkey" ? Model.normalizeHotkey(root.pendingHotkey) || root.mruHotkey : ""))
+            title: root.view === "main" ? root.activeDescription : (root.view === "alias" ? "Edit bar alias" : (root.view === "hotkey" ? "Switching hotkey" : "Add a language"))
+            meta: root.view === "main" ? root.heroPhrase : (root.view === "alias" && root.editingAliasLayout ? Model.descriptionFor(root.catalog, root.editingAliasLayout.layout, root.editingAliasLayout.variant) : (root.view === "hotkey" ? "Key combination to capture" : "Installed XKB layouts"))
+            detail: root.view === "main" ? root.layoutLabel : (root.view === "alias" ? root.aliasPreview : (root.view === "hotkey" ? Model.normalizeHotkey(root.pendingHotkey) || root.switchHotkey : ""))
 
             iconComponent: Component {
               Text {
-                text: root.view === "main" ? "󰌌" : (root.view === "shortcut" ? "󰁔" : (root.view === "alias" ? "󰏫" : (root.view === "hotkey" ? "󰌒" : "󰐕")))
+                text: root.view === "main" ? "󰌌" : (root.view === "alias" ? "󰏫" : (root.view === "hotkey" ? "󰌒" : "󰐕"))
                 color: Color.foreground
                 font.family: Style.font.family
                 font.pixelSize: Style.font.display
@@ -743,7 +701,7 @@ Panel {
 
               Text {
                 width: parent.width
-                text: "XKB shortcut " + root.conflictOption + " is also live in the keymap — one press would switch languages twice."
+                text: "A stray XKB group shortcut (" + root.conflictOption + ") is live in the keymap — it conflicts with the Switching hotkey and would switch languages twice."
                 color: Color.urgent
                 font.family: Style.font.family
                 font.pixelSize: Style.font.caption
@@ -920,7 +878,7 @@ Panel {
             Toggle {
               width: parent.width
               label: "macOS-style switching"
-              description: root.switchMode === "mru" ? "Quick tap toggles between the two most recent languages. Rapid taps cycle all." : "XKB shortcut cycles through all languages."
+              description: root.switchMode === "mru" ? "Quick tap toggles between the two most recent languages. Rapid taps cycle all." : "Every press cycles through all languages."
               checked: root.switchMode === "mru"
               enabled: root.stateReady && !applyProc.running
               foreground: Color.foreground
@@ -931,33 +889,7 @@ Panel {
 
             Button {
               width: parent.width
-              text: "Switch shortcut"
-              iconText: "󰁔"
-              leftAlign: true
-              focusable: true
-              enabled: root.stateReady && !applyProc.running
-              foreground: Color.foreground
-              fontFamily: Style.font.family
-              hasCursor: root.cursorIndex === root.configuredLayouts.length
-              onHovered: function(hovered) {
-                if (hovered) root.cursorIndex = root.configuredLayouts.length
-              }
-              onClicked: root.startShortcut()
-            }
-
-            Text {
-              width: parent.width
-              leftPadding: Style.spacing.controlPaddingX
-              text: root.shortcutLabel(root.switchOption) + (root.switchMode === "mru" ? " (active in XKB mode)" : "")
-              color: Qt.darker(Color.foreground, 1.45)
-              font.family: Style.font.family
-              font.pixelSize: Style.font.caption
-              elide: Text.ElideRight
-            }
-
-            Button {
-              width: parent.width
-              text: "macOS-style hotkey"
+              text: "Switching hotkey"
               iconText: "󰌒"
               leftAlign: true
               focusable: true
@@ -970,7 +902,7 @@ Panel {
             Text {
               width: parent.width
               leftPadding: Style.spacing.controlPaddingX
-              text: root.mruHotkey + (root.switchMode === "xkb" ? " (inactive in XKB mode)" : "")
+              text: root.switchHotkey
               color: Qt.darker(Color.foreground, 1.45)
               font.family: Style.font.family
               font.pixelSize: Style.font.caption
@@ -986,68 +918,11 @@ Panel {
               enabled: root.stateReady && !applyProc.running
               foreground: Color.foreground
               fontFamily: Style.font.family
-              hasCursor: root.cursorIndex === root.configuredLayouts.length + 1
+              hasCursor: root.cursorIndex === root.configuredLayouts.length
               onHovered: function(hovered) {
-                if (hovered) root.cursorIndex = root.configuredLayouts.length + 1
+                if (hovered) root.cursorIndex = root.configuredLayouts.length
               }
               onClicked: root.startAdd()
-            }
-          }
-
-          Column {
-            visible: root.view === "shortcut"
-            width: parent.width
-            spacing: Style.space(12)
-
-            Text {
-              width: parent.width
-              text: "Choose how languages cycle in XKB mode. Cancel keeps " + root.shortcutLabel(root.switchOption) + "."
-              color: Qt.darker(Color.foreground, 1.45)
-              font.family: Style.font.family
-              font.pixelSize: Style.font.body
-              wrapMode: Text.WordWrap
-            }
-
-            KeyboardSearchableDropdown {
-              id: shortcutPicker
-
-              width: parent.width
-              label: "Keyboard shortcut"
-              placeholderText: "Search supported shortcuts…"
-              emptyText: "No supported shortcut matches"
-              foreground: Color.foreground
-              fontFamily: Style.font.family
-              rowHeight: root.pickerControlHeight
-              popupRowHeight: root.pickerPopupRowHeight
-              options: root.catalog.shortcuts
-              onChanged: function(value) {
-                root.selectedShortcut = value
-              }
-            }
-
-            Row {
-              anchors.right: parent.right
-              spacing: Style.space(8)
-
-              Button {
-                text: "Cancel"
-                focusable: true
-                bordered: true
-                foreground: Color.foreground
-                fontFamily: Style.font.family
-                onClicked: root.openMain()
-              }
-
-              Button {
-                text: applyProc.running ? "Applying…" : "Apply"
-                focusable: true
-                bordered: true
-                enabled: root.stateReady && !applyProc.running && root.selectedShortcut !== "" && root.selectedShortcut !== root.switchOption
-                foreground: Color.foreground
-                accent: Color.accent
-                fontFamily: Style.font.family
-                onClicked: root.saveShortcut()
-              }
             }
           }
 
@@ -1246,7 +1121,7 @@ Panel {
 
             Text {
               width: parent.width
-              text: "Press the key combination for macOS-style switching. Currently: " + root.mruHotkey + "."
+              text: "Press the key combination for switching languages. Currently: " + root.switchHotkey + "."
               color: Qt.darker(Color.foreground, 1.45)
               font.family: Style.font.family
               font.pixelSize: Style.font.body
@@ -1319,7 +1194,7 @@ Panel {
                 text: applyProc.running ? "Saving…" : "Apply"
                 focusable: true
                 bordered: true
-                enabled: root.stateReady && !applyProc.running && Model.hotkeyError(root.pendingHotkey) === "" && Model.normalizeHotkey(root.pendingHotkey) !== root.mruHotkey
+                enabled: root.stateReady && !applyProc.running && Model.hotkeyError(root.pendingHotkey) === "" && Model.normalizeHotkey(root.pendingHotkey) !== root.switchHotkey
                 foreground: Color.foreground
                 accent: Color.accent
                 fontFamily: Style.font.family

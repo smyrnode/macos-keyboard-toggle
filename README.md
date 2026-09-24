@@ -26,9 +26,8 @@ Right-click the language label in the bar to:
 - **reorder** languages with the ↑/↓ buttons (the active language stays put);
 - **set a bar alias** per language (up to 6 characters, reused in the HUD);
 - turn **macOS-style switching** on or off;
-- **change the macOS-style hotkey** by pressing a new key combination;
-- pick the **XKB switching shortcut** used when macOS-style switching is off;
-- fix conflicts if a stray XKB `grp:` shortcut is live while macOS-style switching is on (that would switch twice on one press).
+- **change the Switching hotkey** by pressing a new key combination;
+- fix conflicts if a stray XKB `grp:` shortcut is live in the keymap (it would fight the hotkey and switch twice on one press).
 
 Changes are validated with `xkbcli`, applied live through Hyprland IPC, and rolled back automatically if the compositor rejects them — no session reload.
 
@@ -38,8 +37,11 @@ Toggle **macOS-style switching** in the panel:
 
 | Mode | Hotkey behavior |
 |------|-----------------|
-| **macOS-style** (default) | `Ctrl + Space` toggles the last two languages; rapid taps cycle all. The XKB `grp:` shortcut stays out of the keymap, so nothing double-switches. |
-| **XKB** | The chosen XKB shortcut (default `Ctrl + Space`) cycles through all languages sequentially, like a stock setup. Left-click cycles too. |
+| **macOS-style** (default) | A quick tap toggles the last two languages; rapid taps cycle through all of them. |
+| **Off** | Every press cycles through all languages sequentially, like a stock XKB setup. |
+
+Both modes run on the same **Switching hotkey** (a Hyprland binding) — no XKB
+group shortcuts are used, so nothing can switch twice.
 
 ## Installation
 
@@ -60,7 +62,7 @@ The installer registers this binding in `~/.config/hypr/bindings.lua`:
 o.bind("CTRL + SPACE", "Toggle language (macOS-style)", "~/.local/bin/omarchy-lang-toggle")
 ```
 
-> **Note:** While the panel manages languages it applies `kb_layout`/`kb_options` via a generated toggle that overrides `~/.config/hypr/input.lua`. Keep XKB group-toggle options (such as `grp:ctrl_space_toggle`) out of `input.lua` — the panel owns them.
+> **Note:** While the panel manages languages it applies `kb_layout`/`kb_options` via a generated toggle that overrides `~/.config/hypr/input.lua`. Keep XKB group-toggle options (such as `grp:ctrl_space_toggle`) out of `input.lua` — the Switching hotkey owns switching and a `grp:` option on the same key would switch twice.
 
 ## How it works
 
